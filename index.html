@@ -500,19 +500,26 @@ function attachGridShortcuts(ta){
     // R — barre de répétition
     if(ev.key==='r'||ev.key==='R'){
       ev.preventDefault();
-      const start=ta.selectionStart,end=ta.selectionEnd;
+      let start=ta.selectionStart;
       let val=ta.value;
+      // Si le dernier caractère inséré est une barre de mesure " | ", on la remplace
+      if(!lastWasRep && val.slice(start-3,start)===' | '){
+        val=val.slice(0,start-3)+val.slice(start);
+        start=start-3;
+        ta.value=val;
+        ta.selectionStart=ta.selectionEnd=start;
+        repOpen=true;
+      }
       if(lastWasRep){
         // Remplacer la dernière barre de répétition
         const prev=repOpen?'[: ':':]';
         const idx=val.lastIndexOf(prev,start-1);
-        if(idx>=0){val=val.slice(0,idx)+val.slice(idx+prev.length);ta.value=val;ta.selectionStart=ta.selectionEnd=idx;}
+        if(idx>=0){val=val.slice(0,idx)+val.slice(idx+prev.length);ta.value=val;start=idx;ta.selectionStart=ta.selectionEnd=idx;}
       }
       repOpen=!lastWasRep?true:!repOpen;
       const ins=repOpen?'[: ':':]';
-      const pos=ta.selectionStart;
-      ta.value=val.slice(0,pos)+ins+val.slice(pos);
-      ta.selectionStart=ta.selectionEnd=pos+ins.length;
+      ta.value=val.slice(0,start)+ins+val.slice(start);
+      ta.selectionStart=ta.selectionEnd=start+ins.length;
       lastWasRep=true;
       ta.dispatchEvent(new Event('input',{bubbles:true}));
       return;
