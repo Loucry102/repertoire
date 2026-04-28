@@ -448,12 +448,17 @@ function rSong(){
   const badge=document.getElementById('inst-badge');
   if(badge){
     const showBadge=t==='chords'&&A.viewMode==='text'&&(A.sd.secs_g.length>0||A.sd.secs_b.length>0);
-    badge.style.display=showBadge?'block':'none';
-    // Afficher la grille réellement montrée (pas juste instMode)
-    const realInst=A.instMode==='bass'&&A.sd.secs_b.length>0?'basse':
-                   A.instMode==='guitar'&&A.sd.secs_g.length>0?'guitare':
-                   A.sd.secs_g.length>0?'guitare':'basse';
-    badge.textContent='('+realInst+')';
+    // Badge couleur selon la grille affichée
+    const realInst2=A.instMode==='bass'&&A.sd.secs_b.length>0?'bass':
+                    A.instMode==='guitar'&&A.sd.secs_g.length>0?'guitar':
+                    A.sd.secs_g.length>0?'guitar':'bass';
+    if(showBadge){
+      badge.style.display='inline-block';
+      badge.style.cssText='display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:'+(realInst2==='guitar'?'#27ae60':'#9b59b6')+';color:#fff;margin-left:8px;vertical-align:middle;text-transform:uppercase;letter-spacing:.05em';
+      badge.textContent=realInst2==='guitar'?'G':'B';
+    }else{
+      badge.style.display='none';
+    }
   }
   const hasBoth=A.sd.imgs.length>0&&(A.sd.secs_g.length>0||A.sd.secs_b.length>0);
   const ib2=document.getElementById('inst-toggle');
