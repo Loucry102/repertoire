@@ -1,5 +1,5 @@
 const CACHE = 'scene-v1';
-const ASSETS = ['./'];
+const ASSETS = ['/repertoire/', '/repertoire/sw.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
