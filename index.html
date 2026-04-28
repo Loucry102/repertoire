@@ -2,18 +2,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/repertoire/sw.js').catch(e=>console.warn('SW:',e));
-  });
-}
-</script>
+
 
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Scène">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="/repertoire/manifest.json">
 <meta name="theme-color" content="#161616">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23161616'/><text y='68' x='50' text-anchor='middle' font-size='60' fill='white'>🎵</text></svg>">
 <title>Scène</title>
@@ -478,4 +471,3 @@ const _x={go,openImgFs,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 </body></html>
-
