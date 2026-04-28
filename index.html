@@ -159,6 +159,9 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
   transition:bottom .1s;
 }
 .kb-bar.on{display:flex}
+.btn-guitar{background:#27ae60!important;color:#fff!important}
+.btn-bass{background:#9b59b6!important;color:#fff!important}
+.btn-add-inst{background:#27ae60!important;color:#fff!important}
 .kb-btn{
   padding:8px 14px;
   border-radius:9px;
@@ -190,10 +193,14 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
       <button class="bk" onclick="doLogout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
     </div>
     <div style="font-size:20px;font-weight:700;color:#fff;text-align:center">choisissez votre rôle</div>
-    <div class="irow">
+    <div class="irow" style="max-width:500px">
       <button class="icard" onclick="chooseInstr('chords')">
         <svg width="52" height="52" viewBox="0 0 42 42" fill="none"><rect x="18" y="3" width="6" height="16" rx="3" fill="#ccc"/><ellipse cx="21" cy="30" rx="9" ry="7" fill="#eee" stroke="#333" stroke-width="1.5"/><line x1="21" y1="3" x2="21" y2="38" stroke="#333" stroke-width="1.5"/><line x1="17" y1="10" x2="25" y2="10" stroke="#333" stroke-width="1.5"/><line x1="17" y1="16" x2="25" y2="16" stroke="#333" stroke-width="1.5"/><circle cx="21" cy="30" r="2" fill="#333"/></svg>
-        <span style="color:#111">instruments</span>
+        <span style="color:#111">guitare</span>
+      </button>
+      <button class="icard" onclick="chooseInstr('bass')">
+        <svg width="52" height="52" viewBox="0 0 42 42" fill="none"><rect x="19" y="2" width="4" height="18" rx="2" fill="#ccc"/><ellipse cx="21" cy="31" rx="10" ry="8" fill="#eee" stroke="#333" stroke-width="1.5"/><line x1="21" y1="2" x2="21" y2="39" stroke="#333" stroke-width="1.5"/><line x1="16" y1="9" x2="26" y2="9" stroke="#333" stroke-width="1.5"/><circle cx="21" cy="31" r="2.5" fill="#333"/></svg>
+        <span style="color:#111">basse</span>
       </button>
       <button class="icard" onclick="chooseInstr('lyrics')">
         <svg width="52" height="52" viewBox="0 0 42 42" fill="none"><rect x="15" y="5" width="12" height="18" rx="6" fill="#eee" stroke="#333" stroke-width="1.5"/><path d="M7 22c0 7.7 6.3 14 14 14s14-6.3 14-14" stroke="#333" stroke-width="1.5" stroke-linecap="round"/><line x1="21" y1="36" x2="21" y2="40" stroke="#333" stroke-width="1.5" stroke-linecap="round"/><line x1="15" y1="40" x2="27" y2="40" stroke="#333" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -228,7 +235,12 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
     <div class="tz" id="tz"><button class="tb" onclick="tr(-1)">−</button><span class="ti" id="td">0</span><button class="tb" onclick="tr(+1)">+</button></div>
     <button class="ib" id="eb" onclick="startEdit()"><svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
   </div>
-  <div class="stbar"><div class="stfull" id="stf"></div></div>
+  <div class="stbar">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+      <div class="stfull" id="stf"></div>
+      <div id="inst-badge" style="display:none;font-size:16px;color:#aaa;font-weight:600"></div>
+    </div>
+  </div>
   <div id="smt" style="display:none;padding:7px 16px;background:#111;border-bottom:1px solid #333;display:flex;gap:22px;flex-shrink:0">
     <div><div class="sml">accordage</div><div class="smv" id="smtun"></div></div>
     <div style="width:1px;background:#333;align-self:stretch;margin:0 4px"></div>
@@ -236,6 +248,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
   </div>
   <div class="sbody" id="sb"></div>
   <button id="view-toggle" onclick="toggleView()" style="display:none;position:absolute;bottom:max(env(safe-area-inset-bottom,0px),90px);right:16px;padding:13px 20px;border-radius:14px;background:#e67e22!important;color:#fff!important;font-size:15px;font-weight:700;align-items:center;gap:6px;z-index:50;box-shadow:0 3px 12px rgba(0,0,0,.5)"></button>
+  <button id="inst-toggle" style="display:none;position:absolute;bottom:max(env(safe-area-inset-bottom,0px),150px);right:16px;padding:13px 20px;border-radius:14px;color:#fff!important;font-size:15px;font-weight:700;align-items:center;z-index:50;box-shadow:0 3px 12px rgba(0,0,0,.5)"></button>
 
   <div class="zbar" id="zbar" style="display:none">
     <button class="zb" onclick="zm(-1)">−</button>
@@ -287,7 +300,7 @@ let DB=null;
 async function loadDB(){const snap=await getDoc(_doc);if(snap.exists()){DB=snap.data();}else{DB={u:{titi:{h:'Loucry102',r:'admin'}},s:{'Lily Cry':{},'Lou Smile':{},'RN102':{}},g:[{n:'Lily Cry',c:'#e74c3c'},{n:'Lou Smile',c:'#3498db'},{n:'RN102',c:'#27ae60'}]};await setDoc(_doc,DB);}if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];}
 function sDB(){setDoc(_doc,DB).catch(e=>console.warn('sync',e));}
 async function uploadImg(file){const fd=new FormData();fd.append('file',file);fd.append('upload_preset','repertoir');const r=await fetch('https://api.cloudinary.com/v1_1/dxdm5pkl6/image/upload',{method:'POST',body:fd});if(!r.ok)throw new Error('upload');return(await r.json()).secure_url;}
-let A={ins:'chords',grp:'',key:'',tab:'chords',semi:0,viewMode:'text',sd:{type:'text',secs:[],lyr:'',imgs:[],tun:'E',tkey:'',mode:'Majeur'},et:'chords',ed:{},edSemi:0,edTitle:'',lfs:44,cfs:44,imgScale:1,imgIdx:0,alt:'sharp',theme:'dark',usr:null,nc:'#e74c3c',ptun:'E',psecs:[],pimgs:[]};
+let A={ins:'chords',grp:'',key:'',tab:'chords',semi:0,viewMode:'text',instMode:'guitar',pins:'guitar',_clipboard:null,_edInst:'guitar',sd:{type:'text',secs:[],lyr:'',imgs:[],tun:'E',tkey:'',mode:'Majeur'},et:'chords',ed:{},edSemi:0,edTitle:'',lfs:44,cfs:44,imgScale:1,alt:'sharp',theme:'dark',usr:null,nc:'#e74c3c',ptun:'E',psecs:[],pimgs:[]};
 const LS={alt:u=>'alt_'+u,theme:u=>'theme_'+u,zoom:u=>'zoom_'+u,sess:'sc_s'};
 function getAlt(){return A.usr?localStorage.getItem(LS.alt(A.usr.n))||'sharp':'sharp';}
 function setAlt(v){if(A.usr)localStorage.setItem(LS.alt(A.usr.n),v);A.alt=v;}
@@ -301,7 +314,11 @@ async function init(){go('sl0');try{await loadDB();}catch(e){try{const sv=localS
 function afterLogin(){document.getElementById('wn').textContent=A.usr.n;A.alt=getAlt();A.theme=getTheme();applyTheme();const z=getZoom();A.lfs=z.lfs;A.cfs=z.cfs;go('si');}
 function doLogin(){const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value;document.getElementById('le').textContent='';if(!u||!p){document.getElementById('le').textContent='Remplissez tous les champs';return;}if(DB.u?.[u]?.h===p){A.usr={n:u,role:DB.u[u].r||DB.u[u].role||'editor'};try{localStorage.setItem(LS.sess,JSON.stringify(A.usr));}catch(e){}document.getElementById('lu').value='';document.getElementById('lp').value='';afterLogin();}else document.getElementById('le').textContent='Pseudo ou mot de passe incorrect';}
 function doLogout(){try{localStorage.removeItem(LS.sess);}catch(e){}A.usr=null;A.theme='dark';applyTheme();go('sl');}
-function chooseInstr(t){A.ins=t;go('sg');}
+function chooseInstr(t){
+  A.ins=t;
+  A.instMode=t==='bass'?'bass':'guitar';
+  go('sg');
+}
 function canEdit(){return A.usr&&(A.usr.role==='admin'||A.usr.role==='editor');}
 function e(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
 function mk(tag,style,txt,fn){const el=document.createElement(tag);if(style)el.style.cssText=style;if(txt)el.textContent=txt;if(fn)el.addEventListener('click',fn);return el;}
@@ -351,8 +368,13 @@ function rRep(filter){
     const keyStr=s.k?'<span class="mm-lbl">tonalité : </span><span class="mm-val">'+fk(s.k,s.m)+'</span>':'';
     const meta=tunStr||keyStr?'<div class="mi-sep"></div><div style="display:flex;flex-direction:column;gap:4px">'+(tunStr?'<div>'+tunStr+'</div>':'')+(keyStr?'<div>'+keyStr+'</div>':'')+'</div>':'';
     const hasImg=s.imgs&&s.imgs.length>0;
-    const imgIcon=hasImg?'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#e67e22" stroke-width="2.5" stroke-linecap="round" style="margin-left:7px;vertical-align:middle;display:inline-block"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>':'';
-    const inf=document.createElement('div');inf.style.cssText='flex:1;cursor:pointer;min-width:0';inf.innerHTML='<div class="mn">'+nm+imgIcon+'</div>'+meta;inf.addEventListener('click',()=>oSong(nm));el.appendChild(inf);
+    const hasG=(s.sg&&s.sg.length>0)||(s.sc&&s.sc.length>0&&!s.sb);
+    const hasB=s.sb&&s.sb.length>0;
+    const imgIcon=hasImg?'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#e67e22" stroke-width="2.5" stroke-linecap="round" style="margin-left:6px;vertical-align:middle;display:inline-block"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>':'';
+    let gridBadges='';
+    if(hasG)gridBadges+='<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:#27ae60;color:#fff;margin-right:4px;vertical-align:middle">G</span>';
+    if(hasB)gridBadges+='<span style="display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:#9b59b6;color:#fff;margin-right:4px;vertical-align:middle">B</span>';
+    const inf=document.createElement('div');inf.style.cssText='flex:1;cursor:pointer;min-width:0';inf.innerHTML='<div class="mn">'+nm+gridBadges+imgIcon+'</div>'+meta;inf.addEventListener('click',()=>oSong(nm));el.appendChild(inf);
     if(canEdit()){const db=document.createElement('button');db.style.cssText='width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0';db.innerHTML='<svg width="5" height="20" viewBox="0 0 5 20" fill="currentColor"><circle cx="2.5" cy="2.5" r="2"/><circle cx="2.5" cy="10" r="2"/><circle cx="2.5" cy="17.5" r="2"/></svg>';db.addEventListener('click',ev=>{ev.stopPropagation();tDD(db,nm);});el.appendChild(db);}
     list.appendChild(el);
   });
@@ -363,13 +385,23 @@ function doCT(nm,tgt){const s=DB.s?.[A.grp]?.[nm];if(!s){cM();return;}if(!DB.s[t
 function cfDel(nm){cDD();sM('<h3>Supprimer ?</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+nm+'"</p><div class="ma"><button class="cc" onclick="cM()">non</button><button class="dl" onclick="doDel(\''+e(nm)+'\')">oui</button></div>');}
 function doDel(nm){if(DB.s?.[A.grp])delete DB.s[A.grp][nm];sDB();cM();rRep('');}
 function pubChoice(){pubTxt();}
-function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom</label><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><label class="fl">Images (optionnel)</label><div id="ptimgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div><div class="ua" onclick="document.getElementById(\'ptimf\').click()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 4px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="ptimf" accept="image/*" style="display:none" onchange="prvImgTxt(this)"/><div class="ma"><button class="cc" onclick="pubChoice()">← retour</button><button onclick="doPubTxt()">publier</button></div>');rSF();setTimeout(attachAllGridShortcuts,50);}
+function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom</label><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Instrument</label><div class="sr"><button class="tn" id="pig">Guitare</button><button class="tn off" id="pib">Basse</button></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><label class="fl">Images (optionnel)</label><div id="ptimgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div><div class="ua" onclick="document.getElementById(\'ptimf\').click()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 4px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="ptimf" accept="image/*" style="display:none" onchange="prvImgTxt(this)"/><div class="ma"><button class="cc" onclick="pubChoice()">← retour</button><button onclick="doPubTxt()">publier</button></div>');
+  A.pins='guitar';
+  const _pig=document.getElementById('pig'),_pib=document.getElementById('pib');
+  if(_pig)_pig.onclick=()=>sPInst('guitar');
+  if(_pib)_pib.onclick=()=>sPInst('bass');
+  rSF();setTimeout(attachAllGridShortcuts,50);}
 function capSF(){const cont=document.getElementById('sf2');if(!cont)return;cont.querySelectorAll('.esec').forEach((div,i)=>{const ta=div.querySelector('textarea'),inp=div.querySelector('input');if(ta&&A.psecs[i])A.psecs[i].c=ta.value;if(inp&&A.psecs[i])A.psecs[i].n=inp.value;});}
 function rSF(){const c=document.getElementById('sf2');if(!c)return;c.innerHTML='';A.psecs.forEach((s,i)=>{const d=document.createElement('div');d.className='esec';d.innerHTML='<div class="esh"><input value="'+s.n+'" placeholder="Nom" oninput="A.psecs['+i+'].n=this.value"/><button class="rm" onclick="rSec('+i+')">✕</button></div><textarea placeholder="Am  F  C  G..." oninput="A.psecs['+i+'].c=this.value">'+s.c+'</textarea>';c.appendChild(d);});}
 function aSec(){capSF();A.psecs.push({n:'Section '+(A.psecs.length+1),c:''});rSF();setTimeout(attachAllGridShortcuts,50);}
 function rSec(i){capSF();A.psecs.splice(i,1);rSF();setTimeout(attachAllGridShortcuts,50);}
+function sPInst(v){A.pins=v;const pg=document.getElementById('pig'),pb=document.getElementById('pib');if(pg)pg.className='tn'+(v!=='guitar'?' off':'');if(pb)pb.className='tn'+(v!=='bass'?' off':'');}
 function sPT(t){A.ptun=t;const pe=document.getElementById('pe'),pd=document.getElementById('pd');if(pe)pe.className='tn'+(t==='D'?' off':'');if(pd)pd.className='tn'+(t==='E'?' off':'');}
-function doPubTxt(){capSF();const nm=(document.getElementById('pn')?.value||'').trim();if(!nm){alert('Entrez un nom');return;}if(!DB.s[A.grp])DB.s[A.grp]={};DB.s[A.grp][nm]={tp:'text',sc:A.psecs.map(s=>({n:s.n||'Section',c:s.c||''})),ly:document.getElementById('pl')?.value||'',imgs:A.pimgs.slice(),k:document.getElementById('pk')?.value||'C',m:document.getElementById('pm')?.value||'Majeur',t:A.ptun};sDB();cM();rRep('');}
+function doPubTxt(){capSF();const nm=(document.getElementById('pn')?.value||'').trim();if(!nm){alert('Entrez un nom');return;}if(!DB.s[A.grp])DB.s[A.grp]={};const _secs=A.psecs.map(s=>({n:s.n||'Section',c:s.c||''}));
+  const _existing=DB.s[A.grp][nm]||{};
+  DB.s[A.grp][nm]=Object.assign(_existing,{tp:'text',ly:document.getElementById('pl')?.value||'',imgs:A.pimgs.slice(),k:document.getElementById('pk')?.value||'C',m:document.getElementById('pm')?.value||'Majeur',t:A.ptun});
+  if(A.pins==='bass'){DB.s[A.grp][nm].sb=_secs;if(!DB.s[A.grp][nm].sg)DB.s[A.grp][nm].sg=[];}
+  else{DB.s[A.grp][nm].sg=_secs;if(!DB.s[A.grp][nm].sb)DB.s[A.grp][nm].sb=[];}sDB();cM();rRep('');}
 function pubImg(){A.pimgs=[];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau — image</h3><label class="fl">Nom</label><input class="fi" id="pin" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pie" onclick="sPTI(\'E\')">E standard</button><button class="tn off" id="pid" onclick="sPTI(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pik" style="flex:1">'+ko+'</select><select class="fi" id="pim" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Images de la grille</label><div id="pimglist" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div><div class="ua" onclick="document.getElementById(\'imf\').click()"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 8px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="imf" accept="image/*" style="display:none" onchange="prvImg(this)"/><label class="fl">Paroles</label><textarea class="fta" id="pil" placeholder="Couplet 1..."></textarea><div class="ma"><button class="cc" onclick="pubChoice()">← retour</button><button onclick="doPubImg()">publier</button></div>');}
 function sPTI(t){A.ptun=t;const pe=document.getElementById('pie'),pd=document.getElementById('pid');if(pe)pe.className='tn'+(t==='D'?' off':'');if(pd)pd.className='tn'+(t==='E'?' off':'');}
 async function prvImgTxt(inp){
@@ -399,13 +431,49 @@ function rPtImgs(){
 async function prvImg(inp){if(!inp.files?.[0])return;const ua=inp.previousElementSibling;if(ua?.querySelector('p'))ua.querySelector('p').textContent='Upload en cours…';try{A.pimgs.push(await uploadImg(inp.files[0]));rPimgList();if(ua?.querySelector('p'))ua.querySelector('p').textContent='+ Ajouter une image';inp.value='';}catch(e){if(ua?.querySelector('p'))ua.querySelector('p').textContent='Erreur — réessayez';alert('Erreur upload.');}}
 function rPimgList(){const list=document.getElementById('pimglist');if(!list)return;list.innerHTML='';A.pimgs.forEach((url,i)=>{const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px';const img=document.createElement('img');img.src=url;img.style.cssText='width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0';const l=document.createElement('span');l.style.cssText='flex:1;font-size:13px;color:#aaa';l.textContent='Image '+(i+1);const del=mk('button','width:32px;height:32px;border-radius:8px;background:#e74c3c!important;color:#fff!important;font-size:16px;padding:0;flex-shrink:0','✕',()=>{A.pimgs.splice(i,1);rPimgList();});row.appendChild(img);row.appendChild(l);row.appendChild(del);list.appendChild(row);});}
 function doPubImg(){const nm=(document.getElementById('pin')?.value||'').trim();if(!nm){alert('Entrez un nom');return;}if(!A.pimgs.length){alert('Importez au moins une image');return;}if(!DB.s[A.grp])DB.s[A.grp]={};DB.s[A.grp][nm]={tp:'image',sc:[],ly:document.getElementById('pil')?.value||'',imgs:A.pimgs.slice(),k:document.getElementById('pik')?.value||'C',m:document.getElementById('pim')?.value||'Majeur',t:A.ptun};sDB();A.pimgs=[];cM();rRep('');}
-function oSong(nm){A.key=nm;A.semi=0;const s=DB.s?.[A.grp]?.[nm]||{};A.sd={type:s.tp||'text',secs:s.sc?JSON.parse(JSON.stringify(s.sc)):[],lyr:s.ly||'',imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
-  A.viewMode=A.sd.secs.length>0?'text':'image';
+function oSong(nm){A.key=nm;A.semi=0;const s=DB.s?.[A.grp]?.[nm]||{};
+  const _sg=s.sg?JSON.parse(JSON.stringify(s.sg)):s.sc?JSON.parse(JSON.stringify(s.sc)):[];
+  const _sb=s.sb?JSON.parse(JSON.stringify(s.sb)):[];
+  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
+  // Priorité selon le rôle choisi, mais si la grille n'existe pas → l'autre
+  if(A.ins==='bass') A.instMode=_sb.length>0?'bass':(_sg.length>0?'guitar':'bass');
+  else A.instMode=_sg.length>0?'guitar':(_sb.length>0?'bass':'guitar');
+  A.viewMode=(_sg.length>0||_sb.length>0)?'text':'image';
   document.getElementById('stf').textContent=nm;A.tab=A.ins==='lyrics'?'lyrics':'chords';const z=getZoom();A.lfs=z.lfs;A.cfs=z.cfs;document.getElementById('eb').style.display=canEdit()?'flex':'none';rSong();go('ss');}
 function rSong(){
   const t=A.tab;
   // Bouton bascule : visible si le morceau a les deux types
-  const hasBoth=A.sd.imgs.length>0&&A.sd.secs.length>0;
+  const curSecs=getCurSecs();A.sd.secs=curSecs;
+  // Badge instrument dans le header
+  const badge=document.getElementById('inst-badge');
+  if(badge){
+    const showBadge=t==='chords'&&A.viewMode==='text'&&(A.sd.secs_g.length>0||A.sd.secs_b.length>0);
+    badge.style.display=showBadge?'block':'none';
+    // Afficher la grille réellement montrée (pas juste instMode)
+    const realInst=A.instMode==='bass'&&A.sd.secs_b.length>0?'basse':
+                   A.instMode==='guitar'&&A.sd.secs_g.length>0?'guitare':
+                   A.sd.secs_g.length>0?'guitare':'basse';
+    badge.textContent='('+realInst+')';
+  }
+  const hasBoth=A.sd.imgs.length>0&&(A.sd.secs_g.length>0||A.sd.secs_b.length>0);
+  const ib2=document.getElementById('inst-toggle');
+  if(ib2&&t==='chords'&&A.viewMode==='text'){
+    const otherHas=hasOtherSecs();
+    const otherLabel=A.instMode==='guitar'?'basse':'guitare';
+    ib2.style.display='flex';
+    ib2.style.fontSize='15px';
+    ib2.style.fontWeight='700';
+    if(otherHas){
+      ib2.textContent=A.instMode==='guitar'?'voir basse':'voir guitare';
+      ib2.className=A.instMode==='guitar'?'btn-bass':'btn-guitar';
+      ib2.onclick=toggleInst;
+    }else{
+      ib2.textContent='+ '+(A.instMode==='guitar'?'Basse':'Guitare');
+      ib2.className='btn-add-inst';
+      const _target=A.instMode==='guitar'?'bass':'guitar';
+      ib2.onclick=()=>addInstGrid(_target);
+    }
+  }else if(ib2)ib2.style.display='none';
   const tb=document.getElementById('view-toggle');
   if(tb){tb.style.display=hasBoth&&t==='chords'?'flex':'none';tb.title=A.viewMode==='text'?'Voir image':'Voir grille texte';tb.textContent=A.viewMode==='text'?'📷 image':'📄 grille';}
   document.getElementById('tc').className='ttb'+(t==='chords'?' on':'');
@@ -426,8 +494,8 @@ function rSong(){
       document.getElementById('zbar').style.display='none';
     }else{
       const w=document.createElement('div');w.className='cw';w.style.cursor='pointer';
-      if(!A.sd.secs.length)w.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">Aucune grille</p>';
-      else A.sd.secs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+trTxt(nrm(s.c||'',A.alt),A.semi)+'</div>';w.appendChild(d);});
+      if(!curSecs.length)w.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">Aucune grille</p>';
+      else curSecs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+trTxt(nrm(s.c||'',A.alt),A.semi)+'</div>';w.appendChild(d);});
       w.appendChild(Object.assign(document.createElement('p'),{style:'font-size:12px;color:#aaa;margin-top:10px;text-align:center',textContent:'↑ Appuyer pour plein écran'}));
       w.addEventListener('click',()=>openFs('chords'));body.appendChild(w);
       document.getElementById('zbar').style.display='flex';
@@ -443,7 +511,7 @@ function rSong(){
 function openFs(type){
   const fc=document.getElementById('fscontent');fc.innerHTML='';
   const sbody=document.getElementById('sb');const ratio=sbody?(sbody.scrollTop/(sbody.scrollHeight-sbody.clientHeight||1)):0;
-  if(type==='chords'){const w=document.createElement('div');w.className='cw';w.style.minHeight='100%';if(!A.sd.secs.length)w.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">Aucune grille</p>';else A.sd.secs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+trTxt(nrm(s.c||'',A.alt),A.semi)+'</div>';w.appendChild(d);});fc.appendChild(w);}
+  if(type==='chords'){const w=document.createElement('div');w.className='cw';w.style.minHeight='100%';const fsSecs=getCurSecs();if(!fsSecs.length)w.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">Aucune grille</p>';else fsSecs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+trTxt(nrm(s.c||'',A.alt),A.semi)+'</div>';w.appendChild(d);});fc.appendChild(w);}
   else{const w=document.createElement('div');w.className='lw';w.style.minHeight='100%';const p=document.createElement('div');p.className='lt';p.style.fontSize=A.lfs+'px';p.textContent=A.sd.lyr||'(aucune parole)';w.appendChild(p);fc.appendChild(w);}
   A.fsType=type;go('sfs');requestAnimationFrame(()=>{const max=fc.scrollHeight-fc.clientHeight;fc.scrollTop=ratio*max;});
 }
@@ -492,11 +560,12 @@ let _uiT=null;
 function showUI(){document.querySelectorAll('.ui-fade').forEach(el=>el.classList.remove('hidden'));clearTimeout(_uiT);_uiT=setTimeout(()=>document.querySelectorAll('.ui-fade').forEach(el=>el.classList.add('hidden')),2500);}
 document.addEventListener('click',()=>{if(document.getElementById('sf')?.classList.contains('on')||document.getElementById('sfs')?.classList.contains('on'))showUI();});
 function sTab(t){A.tab=t;A.semi=0;rSong();}
-function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords')document.querySelectorAll('.sc').forEach((el,i)=>{if(A.sd.secs[i])el.textContent=trTxt(nrm(A.sd.secs[i].c||'',A.alt),A.semi);});}
+function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords'){const _cs=getCurSecs();document.querySelectorAll('.sc').forEach((el,i)=>{if(_cs[i])el.textContent=trTxt(nrm(_cs[i].c||'',A.alt),A.semi);});}}
 function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
-function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier';rES();go('se');setTimeout(attachAllGridShortcuts,50);}
+function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];A._edInst=A.instMode||'guitar';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
+  rES();go('se');setTimeout(attachAllGridShortcuts,50);}
 function sET(t){cEF();A.et=t;rES();setTimeout(attachAllGridShortcuts,50);}
-function cEF(){const body=document.getElementById('eb2');if(A.et==='lyrics'){const ta=body.querySelector('.ely');if(ta)A.ed.lyr=ta.value;}body.querySelectorAll('.esec').forEach((div,i)=>{const ta=div.querySelector('textarea'),inp=div.querySelector('input');if(ta&&A.ed.secs[i])A.ed.secs[i].c=ta.value;if(inp&&A.ed.secs[i])A.ed.secs[i].n=inp.value;});}
+function cEF(){const body=document.getElementById('eb2');if(A.et==='lyrics'){const ta=body.querySelector('.ely');if(ta)A.ed.lyr=ta.value;}}
 function rES(){
   const body=document.getElementById('eb2');body.innerHTML='';
   document.getElementById('etc').className='ttb'+(A.et==='chords'?' on':'');document.getElementById('etl').className='ttb'+(A.et==='lyrics'?' on':'');
@@ -509,15 +578,9 @@ function rES(){
       A.ed.secs.forEach((s,i)=>{const d=document.createElement('div');d.className='esec';d.innerHTML='<div class="esh"><input value="'+(s.n||'')+'" placeholder="Nom" oninput="A.ed.secs['+i+'].n=this.value"/><button class="rm" onclick="rES2('+i+')">✕</button></div><textarea style="width:100%;padding:12px 14px;border:none;font-size:16px;line-height:1.7;min-height:90px;resize:vertical;font-family:monospace;outline:none;color:#111;background:#fff;border-radius:0" oninput="A.ed.secs['+i+'].c=this.value">'+(s.c||'')+'</textarea>';body.appendChild(d);});
       const ab2=mk('button','','+ ajouter une section',()=>{cEF();A.ed.secs.push({n:'Section '+(A.ed.secs.length+1),c:''});rES();});ab2.className='asec';body.appendChild(ab2);
     }else{
-      body.appendChild(lbl('Transposition temporaire (pour réécrire)'));
-      const trzRow=document.createElement('div');trzRow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:14px';
-      const tbm=mk('button','width:38px;height:38px;border-radius:9px;font-size:18px;padding:0','−');const tdisp=document.createElement('span');tdisp.style.cssText='font-size:14px;color:#aaa;min-width:30px;text-align:center';tdisp.textContent=(A.edSemi>0?'+':'')+A.edSemi;const tbp=mk('button','width:38px;height:38px;border-radius:9px;font-size:18px;padding:0','+');
-      const tapply=mk('button','flex:1;padding:10px;border-radius:9px;font-size:13px;background:#27ae60!important;color:#fff!important','Appliquer et écrire dans la grille');
-      tbm.onclick=()=>{A.edSemi--;tdisp.textContent=(A.edSemi>0?'+':'')+A.edSemi;};tbp.onclick=()=>{A.edSemi++;tdisp.textContent=(A.edSemi>0?'+':'')+A.edSemi;};
-      tapply.onclick=()=>{if(!A.edSemi)return;cEF();A.ed.secs=A.ed.secs.map(s=>({n:s.n,c:trTxt(nrm(s.c||'',A.alt),A.edSemi)}));if(A.ed.tkey){const n=A.alt==='flat'?NF:NS;const si=NS.indexOf(A.ed.tkey),fi=NF.indexOf(A.ed.tkey),idx=si>=0?si:fi>=0?fi:-1;if(idx>=0)A.ed.tkey=n[((idx+A.edSemi)%12+12)%12];}A.edSemi=0;rES();};
-      trzRow.appendChild(tbm);trzRow.appendChild(tdisp);trzRow.appendChild(tbp);trzRow.appendChild(tapply);body.appendChild(trzRow);
-      A.ed.secs.forEach((s,i)=>{const d=document.createElement('div');d.className='esec';d.innerHTML='<div class="esh"><input value="'+(s.n||'')+'" placeholder="Nom" oninput="A.ed.secs['+i+'].n=this.value"/><button class="rm" onclick="rES2('+i+')">✕</button></div><textarea style="width:100%;padding:12px 14px;border:none;font-size:16px;line-height:1.7;min-height:90px;resize:vertical;font-family:monospace;outline:none;color:#111;background:#fff;border-radius:0" oninput="A.ed.secs['+i+'].c=this.value">'+(s.c||'')+'</textarea>';body.appendChild(d);});
-      const ab=mk('button','','+ ajouter une section',()=>{cEF();A.ed.secs.push({n:'Section '+(A.ed.secs.length+1),c:''});rES();});ab.className='asec';body.appendChild(ab);
+      // Sections de l'instrument courant uniquement
+      if(!A._edInst)A._edInst=A.instMode||'guitar';
+      rEdSecs(body,A._edInst);
 
     }
         body.appendChild(lbl('Accordage'));const tr2=document.createElement('div');tr2.className='sr';tr2.style.marginBottom='14px';
@@ -538,7 +601,7 @@ function rES(){
 }
 function rES2(i){attachAllGridShortcuts();cEF();A.ed.secs.splice(i,1);rES();}
 function cancelEdit(){go('ss');}
-function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sc:JSON.parse(JSON.stringify(A.ed.secs)),ly:A.ed.lyr,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key)delete DB.s[A.grp][A.key];DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
+function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key)delete DB.s[A.grp][A.key];DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
 function openPrefs(){sM('<h3>Affichage</h3><label class="fl">Altérations</label><p style="color:#999;font-size:13px;margin-bottom:8px">Réglage propre à votre compte.</p><div class="sr"><button class="sbt'+(A.alt!=='sharp'?' off':'')+'" id="ps" onclick="apAlt(\'sharp\')">♯ Dièse</button><button class="sbt'+(A.alt!=='flat'?' off':'')+'" id="pf" onclick="apAlt(\'flat\')">♭ Bémol</button></div><label class="fl" style="margin-top:16px">Thème</label><p style="color:#999;font-size:13px;margin-bottom:8px">Affecte uniquement les boutons groupes et morceaux.</p><div class="sr"><button class="sbt'+(A.theme!=='dark'?' off':'')+'" id="ptd" onclick="apTheme(\'dark\')">🌙 Sombre</button><button class="sbt'+(A.theme!=='light'?' off':'')+'" id="ptl" onclick="apTheme(\'light\')">☀️ Clair</button></div><div class="ma"><button class="cc" onclick="cM()">fermer</button></div>');}
 function apAlt(v){setAlt(v);const ps=document.getElementById('ps'),pf=document.getElementById('pf');if(ps)ps.className='sbt'+(v!=='sharp'?' off':'');if(pf)pf.className='sbt'+(v!=='flat'?' off':'');}
 function apTheme(v){setTheme(v);const pd=document.getElementById('ptd'),pl=document.getElementById('ptl');if(pd)pd.className='sbt'+(v!=='dark'?' off':'');if(pl)pl.className='sbt'+(v!=='light'?' off':'');}
@@ -567,12 +630,135 @@ if(window.visualViewport){
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&document.getElementById('sl').classList.contains('on'))doLogin();});
 init();
 
+function addInstGrid(inst){
+  // Ouvre un menu publication allégé pour ajouter une grille à un morceau existant
+  A.psecs=[{n:'Intro',c:''}];A.ptun=A.sd.tun||'E';A.pins=inst;A._addInst=inst;
+  const label=inst==='bass'?'Basse':'Guitare';
+  const ko=getNotes().map(n=>'<option value="'+n+'"'+(n===A.sd.tkey?' selected':'')+'>'+n+'</option>').join('');
+  sM('<h3>Création grille '+label+'</h3>'
+    +'<p style="font-size:14px;color:#888;margin-bottom:14px;font-weight:600">'+A.key+'</p>'
+    +'<label class="fl">Accordage</label>'
+    +'<div class="sr"><button class="tn" id="pe2">E standard</button><button class="tn off" id="pd2">D (drop)</button></div>'
+    +'<label class="fl">Tonalité</label>'
+    +'<div style="display:flex;gap:8px"><select class="fi" id="pk2" style="flex:1">'+ko+'</select><select class="fi" id="pm2" style="flex:1"><option'+(A.sd.mode==='Majeur'?' selected':'')+'>Majeur</option><option'+(A.sd.mode==='Mineur'?' selected':'')+'>Mineur</option></select></div>'
+    +'<label class="fl" style="margin-top:14px">Sections de grille</label>'
+    +'<div id="sf2add"></div>'
+    +'<button class="asec" onclick="aSecAdd()">+ ajouter une section</button>'
+    +'<div style="display:flex;gap:8px;margin-bottom:8px"><button style="flex:1;padding:10px;border-radius:10px;font-size:13px" onclick="cpAddGrid()">Copier une grille</button><button id="paste-add-btn" style="flex:1;padding:10px;border-radius:10px;font-size:13px;opacity:0.4;cursor:not-allowed" disabled onclick="pasteAddGrid()">Coller</button></div>'
+    +'<div class="ma"><button class="cc" onclick="cM()">annuler</button><button onclick="doAddInstGrid()">créer</button></div>');
+  // Attacher listeners accordage
+  const pe2=document.getElementById('pe2'),pd2=document.getElementById('pd2');
+  if(pe2)pe2.onclick=()=>{A.ptun='E';pe2.className='tn';pd2.className='tn off';};
+  if(pd2)pd2.onclick=()=>{A.ptun='D';pd2.className='tn';pe2.className='tn off';};
+  if(A.sd.tun==='D'&&pd2&&pe2){pd2.className='tn';pe2.className='tn off';}
+  rSFAdd();
+  // Activer le bouton coller si un clipboard existe déjà
+  const pb=document.getElementById('paste-add-btn');
+  if(pb&&A._clipboard){pb.disabled=false;pb.style.opacity='1';pb.style.cursor='pointer';}
+}
+function rSFAdd(){
+  const c2=document.getElementById('sf2add');if(!c2)return;c2.innerHTML='';
+  A.psecs.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='esec';
+    d.innerHTML='<div class="esh"><input value="'+s.n+'" placeholder="Nom" oninput="A.psecs['+i+'].n=this.value"/><button class="rm" onclick="rSecAdd('+i+')">✕</button></div><textarea placeholder="Am  F  C  G..." oninput="A.psecs['+i+'].c=this.value">'+s.c+'</textarea>';
+    c2.appendChild(d);
+  });
+}
+function aSecAdd(){capSFAdd();A.psecs.push({n:'Section '+(A.psecs.length+1),c:''});rSFAdd();}
+function rSecAdd(i){capSFAdd();A.psecs.splice(i,1);rSFAdd();}
+function cpAddGrid(){
+  capSFAdd();
+  // Copie dans le clipboard global (partagé avec le modifier)
+  A._clipboard={secs:JSON.parse(JSON.stringify(A.psecs))};
+  const pb=document.getElementById('paste-add-btn');
+  if(pb){pb.disabled=false;pb.style.opacity='1';pb.style.cursor='pointer';}
+}
+function pasteAddGrid(){
+  if(!A._clipboard)return;
+  A.psecs=JSON.parse(JSON.stringify(A._clipboard.secs));
+  rSFAdd();
+}
+function capSFAdd(){
+  const c2=document.getElementById('sf2add');if(!c2)return;
+  c2.querySelectorAll('.esec').forEach((div,i)=>{
+    const ta=div.querySelector('textarea'),inp=div.querySelector('input');
+    if(ta&&A.psecs[i])A.psecs[i].c=ta.value;
+    if(inp&&A.psecs[i])A.psecs[i].n=inp.value;
+  });
+}
+function doAddInstGrid(){
+  capSFAdd();
+  const key=A._addInst==='bass'?'secs_b':'secs_g';
+  const secs=A.psecs.map(s=>({n:s.n||'Section',c:s.c||''}));
+  const tun=A.ptun||'E';
+  const tkey=document.getElementById('pk2')?.value||A.sd.tkey||'C';
+  const mode=document.getElementById('pm2')?.value||A.sd.mode||'Majeur';
+  // Mettre à jour Firebase
+  const s=DB.s?.[A.grp]?.[A.key];if(!s)return;
+  s[key]=secs;s.t=tun;s.k=tkey;s.m=mode;
+  sDB();
+  // Mettre à jour A.sd
+  A.sd[key]=JSON.parse(JSON.stringify(secs));
+  A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
+  A.instMode=A._addInst;
+  cM();rSong();
+}
+function getCurSecs(){
+  if(A.instMode==='bass') return A.sd.secs_b.length>0?A.sd.secs_b:(A.sd.secs_g.length>0?A.sd.secs_g:[]);
+  return A.sd.secs_g.length>0?A.sd.secs_g:(A.sd.secs_b.length>0?A.sd.secs_b:[]);
+}
+function hasOtherSecs(){
+  return A.instMode==='guitar'?A.sd.secs_b.length>0:A.sd.secs_g.length>0;
+}
+function toggleInst(){
+  if(A.instMode==='guitar'&&A.sd.secs_b.length>0) A.instMode='bass';
+  else if(A.instMode==='bass'&&A.sd.secs_g.length>0) A.instMode='guitar';
+  A.sd.secs=getCurSecs();A.semi=0;rSong();
+}
 function toggleView(){
   A.viewMode=A.viewMode==='text'?'image':'text';
   rSong();
 }
-
-// ── RACCOURCIS GRILLE ─────────────────────────────────────────
+function rEdSecs(body,inst){
+  const key=inst==='bass'?'secs_b':'secs_g';
+  if(!A.ed[key])A.ed[key]=[];
+  const semi={v:0};
+  const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:8px';
+  const tm=mk('button','width:30px;height:30px;border-radius:8px;font-size:14px;padding:0','−');
+  const td=document.createElement('span');td.style.cssText='font-size:12px;color:#aaa;min-width:24px;text-align:center';td.textContent='0';
+  const tp=mk('button','width:30px;height:30px;border-radius:8px;font-size:14px;padding:0','+');
+  const ta2=mk('button','flex:1;padding:8px;border-radius:8px;font-size:12px;background:#27ae60!important;color:#fff!important','Appliquer transpo');
+  tm.onclick=()=>{semi.v--;td.textContent=(semi.v>0?'+':'')+semi.v;};
+  tp.onclick=()=>{semi.v++;td.textContent=(semi.v>0?'+':'')+semi.v;};
+  ta2.onclick=()=>{if(!semi.v)return;A.ed[key]=A.ed[key].map(s=>({n:s.n,c:trTxt(nrm(s.c||'',A.alt),semi.v)}));if(A.ed.tkey){const n=A.alt==='flat'?NF:NS;const si=NS.indexOf(A.ed.tkey),fi=NF.indexOf(A.ed.tkey),ix=si>=0?si:fi>=0?fi:-1;if(ix>=0)A.ed.tkey=n[((ix+semi.v)%12+12)%12];}semi.v=0;td.textContent='0';rES();};
+  row.appendChild(tm);row.appendChild(td);row.appendChild(tp);row.appendChild(ta2);body.appendChild(row);
+  A.ed[key].forEach((s,i)=>{
+    const d=document.createElement('div');d.className='esec';
+    const inp=document.createElement('input');inp.value=s.n||'';inp.placeholder='Nom';inp.oninput=()=>{A.ed[key][i].n=inp.value;};
+    const rm=mk('button','','✕',()=>{A.ed[key].splice(i,1);rES();});rm.className='rm';
+    const esh=document.createElement('div');esh.className='esh';esh.appendChild(inp);esh.appendChild(rm);
+    const textarea=document.createElement('textarea');textarea.style.cssText='width:100%;padding:12px 14px;border:none;font-size:16px;line-height:1.7;min-height:90px;resize:vertical;font-family:monospace;outline:none;color:#111;background:#fff;border-radius:0';
+    textarea.value=s.c||'';textarea.oninput=()=>{A.ed[key][i].c=textarea.value;};
+    d.appendChild(esh);d.appendChild(textarea);body.appendChild(d);
+  });
+  const ab=mk('button','','+ ajouter une section',()=>{A.ed[key].push({n:'Section '+(A.ed[key].length+1),c:''});rES();});ab.className='asec';body.appendChild(ab);
+  // Bouton copier/coller
+  const cpRow=document.createElement('div');cpRow.style.cssText='display:flex;gap:8px;margin-top:8px';
+  const cpBtn=mk('button','flex:1;padding:10px;border-radius:10px;font-size:13px','Copier la grille',()=>{
+    A._clipboard={secs:JSON.parse(JSON.stringify(A.ed[key]))};
+    pasteBtn.disabled=false;pasteBtn.style.opacity='1';pasteBtn.style.cursor='pointer';
+  });
+  const pasteBtn=mk('button','flex:1;padding:10px;border-radius:10px;font-size:13px','Coller',()=>{
+    if(!A._clipboard)return;
+    if(JSON.stringify(A._clipboard.secs)===JSON.stringify(A.ed[key]))return;
+    A.ed[key]=JSON.parse(JSON.stringify(A._clipboard.secs));
+    rES();
+  });
+  pasteBtn.disabled=!A._clipboard;
+  pasteBtn.style.opacity=A._clipboard?'1':'0.4';
+  pasteBtn.style.cursor=A._clipboard?'pointer':'not-allowed';
+  cpRow.appendChild(cpBtn);cpRow.appendChild(pasteBtn);body.appendChild(cpRow);
+}
 function rEdImgs(body){
   (A.ed.imgs||[]).forEach((url,idx)=>{
     const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;background:var(--cw-bg,#fff);border-radius:10px;padding:8px';
@@ -622,7 +808,6 @@ function attachGridShortcuts(ta){
   if(ta._gridShortcuts)return;
   ta._gridShortcuts=true;
 
-
 }
 
 function attachAllGridShortcuts(){
@@ -632,7 +817,7 @@ function attachAllGridShortcuts(){
     ta.addEventListener('blur',()=>setTimeout(kbHide,200));
   });
 }
-const _x={go,openImgFs,kbIns,kbShow,kbHide,toggleView,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
+const _x={go,openImgFs,kbIns,kbShow,kbHide,toggleView,toggleInst,addInstGrid,doAddInstGrid,rSFAdd,aSecAdd,rSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 </body></html>
