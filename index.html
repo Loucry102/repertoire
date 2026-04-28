@@ -2,6 +2,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/repertoire/sw.js').catch(e=>console.warn('SW:',e));
+  });
+}
+</script>
 
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Scène">
@@ -471,3 +478,4 @@ const _x={go,openImgFs,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 </body></html>
+
