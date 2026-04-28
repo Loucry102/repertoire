@@ -498,15 +498,18 @@ function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+'
 function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
 function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier';rES();go('se');setTimeout(attachAllGridShortcuts,50);}
 function sET(t){cEF();A.et=t;rES();setTimeout(attachAllGridShortcuts,50);}
-function cEF(){const body=document.getElementById('eb2');if(A.et==='lyrics'){const ta=body.querySelector('.ely');if(ta)A.ed.lyr=ta.value;}else{body.querySelectorAll('.esec').forEach((div,i)=>{const ta=div.querySelector('textarea'),inp=div.querySelector('input');if(ta&&A.ed.secs[i])A.ed.secs[i].c=ta.value;if(inp&&A.ed.secs[i])A.ed.secs[i].n=inp.value;});}}
+function cEF(){const body=document.getElementById('eb2');if(A.et==='lyrics'){const ta=body.querySelector('.ely');if(ta)A.ed.lyr=ta.value;}body.querySelectorAll('.esec').forEach((div,i)=>{const ta=div.querySelector('textarea'),inp=div.querySelector('input');if(ta&&A.ed.secs[i])A.ed.secs[i].c=ta.value;if(inp&&A.ed.secs[i])A.ed.secs[i].n=inp.value;});}
 function rES(){
   const body=document.getElementById('eb2');body.innerHTML='';
   document.getElementById('etc').className='ttb'+(A.et==='chords'?' on':'');document.getElementById('etl').className='ttb'+(A.et==='lyrics'?' on':'');
   body.appendChild(lbl('Titre du morceau'));const tinp=document.createElement('input');tinp.className='fi';tinp.style.marginBottom='14px';tinp.value=A.edTitle||A.key;tinp.oninput=()=>A.edTitle=tinp.value;body.appendChild(tinp);
   if(A.et==='chords'){
     if(A.ed.type==='image'){
-      (A.ed.imgs||[]).forEach((url,idx)=>{const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#fff;border-radius:12px;padding:10px';const img=document.createElement('img');img.src=url;img.style.cssText='width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0';const l=document.createElement('span');l.style.cssText='flex:1;font-size:13px;color:#333;font-weight:600';l.textContent='Page '+(idx+1);const del=mk('button','width:36px;height:36px;border-radius:9px;background:#e74c3c!important;color:#fff!important;font-size:16px;padding:0;flex-shrink:0','✕',()=>{A.ed.imgs.splice(idx,1);rES();});row.appendChild(img);row.appendChild(l);row.appendChild(del);body.appendChild(row);});
-      if(!A.ed.imgs?.length){const emp=document.createElement('p');emp.style.cssText='color:#aaa;text-align:center;padding:1rem';emp.textContent='Aucune image';body.appendChild(emp);}
+      // Ouvrir une section par défaut si aucune n'existe
+      if(!A.ed.secs.length)A.ed.secs.push({n:'Intro',c:''});
+      body.appendChild(lbl('Grille texte'));
+      A.ed.secs.forEach((s,i)=>{const d=document.createElement('div');d.className='esec';d.innerHTML='<div class="esh"><input value="'+(s.n||'')+'" placeholder="Nom" oninput="A.ed.secs['+i+'].n=this.value"/><button class="rm" onclick="rES2('+i+')">✕</button></div><textarea style="width:100%;padding:12px 14px;border:none;font-size:16px;line-height:1.7;min-height:90px;resize:vertical;font-family:monospace;outline:none;color:#111;background:#fff;border-radius:0" oninput="A.ed.secs['+i+'].c=this.value">'+(s.c||'')+'</textarea>';body.appendChild(d);});
+      const ab2=mk('button','','+ ajouter une section',()=>{cEF();A.ed.secs.push({n:'Section '+(A.ed.secs.length+1),c:''});rES();});ab2.className='asec';body.appendChild(ab2);
     }else{
       body.appendChild(lbl('Transposition temporaire (pour réécrire)'));
       const trzRow=document.createElement('div');trzRow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:14px';
@@ -532,6 +535,8 @@ function rES(){
   }else{
     const w=document.createElement('div');w.className='lw';const ta=document.createElement('textarea');ta.className='ely';ta.value=A.ed.lyr||'';ta.oninput=()=>A.ed.lyr=ta.value;w.appendChild(ta);body.appendChild(w);
   }
+  // Attacher les raccourcis et le clavier virtuel à tous les textareas
+  setTimeout(attachAllGridShortcuts,50);
 }
 function rES2(i){attachAllGridShortcuts();cEF();A.ed.secs.splice(i,1);rES();}
 function cancelEdit(){go('ss');}
@@ -547,10 +552,14 @@ function dMem(u){delete DB.u[u];sDB();cM();openAdmin();}
 // Gestion clavier virtuel mobile pour le modal
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize',()=>{
+    const vv=window.visualViewport;
+    const kbHeight=window.innerHeight-vv.height-vv.offsetTop;
+    // Repositionner la barre clavier
+    const kbb=document.getElementById('kbb');
+    if(kbb)kbb.style.bottom=kbHeight>50?kbHeight+'px':'0';
+    // Repositionner le modal
     const mov=document.querySelector('.mov');
-    if(!mov)return;
-    const kbHeight=window.innerHeight-window.visualViewport.height;
-    mov.style.transform=kbHeight>100?'translateY(-'+Math.min(kbHeight,window.innerHeight*0.4)+'px)':'';
+    if(mov)mov.style.transform=kbHeight>100?'translateY(-'+Math.min(kbHeight,window.innerHeight*0.4)+'px)':'';
   });
 }
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&document.getElementById('sl').classList.contains('on'))doLogin();});
