@@ -143,6 +143,33 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 .dp{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
 .dc{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent}
 .dc.sel{border-color:#333}
+
+.mov{transition:transform .2s ease}
+.kb-bar{
+  display:none;
+  position:fixed;
+  bottom:0;left:0;right:0;
+  background:#222;
+  border-top:1px solid #444;
+  padding:8px 12px;
+  gap:8px;
+  z-index:9999;
+  -webkit-overflow-scrolling:touch;
+  overflow-x:auto;
+  flex-wrap:nowrap;
+  align-items:center;
+}
+.kb-bar.on{display:flex}
+.kb-btn{
+  padding:8px 14px;
+  border-radius:9px;
+  background:#444!important;
+  color:#fff!important;
+  font-size:16px;
+  font-weight:700;
+  flex-shrink:0;
+  white-space:nowrap;
+}
 </style></head><body>
 <div id="app">
 <div id="sl0" class="scr on"><div class="ldg"><div class="spin"></div><span>Connexion…</span></div></div>
@@ -243,6 +270,12 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
   </div>
 </div>
 <div id="mr"></div>
+<div class="kb-bar" id="kbb">
+  <button class="kb-btn" onmousedown="event.preventDefault()" onclick="kbIns(' | ')">|</button>
+  <button class="kb-btn" onmousedown="event.preventDefault()" onclick="kbIns('[:')">[:</button>
+  <button class="kb-btn" onmousedown="event.preventDefault()" onclick="kbIns(':]')">:]</button>
+  <button class="kb-btn" onmousedown="event.preventDefault()" onclick="kbHide()" style="background:#e74c3c!important;margin-left:auto">✕</button>
+</div>
 </div>
 <script type="module">
 const NS=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -511,6 +544,15 @@ function sNR(r){A._nr=r;const re=document.getElementById('re'),rr=document.getEl
 function aMem(){const u=(document.getElementById('nu')?.value||'').trim(),p=(document.getElementById('np')?.value||'').trim();if(!u||!p){alert('Remplissez les deux champs');return;}DB.u[u]={h:p,r:A._nr||'editor'};sDB();cM();openAdmin();}
 function tRole(u){DB.u[u].r=DB.u[u].r==='editor'?'reader':'editor';sDB();cM();openAdmin();}
 function dMem(u){delete DB.u[u];sDB();cM();openAdmin();}
+// Gestion clavier virtuel mobile pour le modal
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',()=>{
+    const mov=document.querySelector('.mov');
+    if(!mov)return;
+    const kbHeight=window.innerHeight-window.visualViewport.height;
+    mov.style.transform=kbHeight>100?'translateY(-'+Math.min(kbHeight,window.innerHeight*0.4)+'px)':'';
+  });
+}
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&document.getElementById('sl').classList.contains('on'))doLogin();});
 init();
 
@@ -541,6 +583,18 @@ function rEdImgs(body){
   });
   body.appendChild(upb);
 }
+
+let _kbTa=null; // textarea actif mémorisé
+function kbIns(str){
+  if(!_kbTa)return;
+  const s=_kbTa.selectionStart,e=_kbTa.selectionEnd;
+  _kbTa.value=_kbTa.value.slice(0,s)+str+_kbTa.value.slice(e);
+  _kbTa.selectionStart=_kbTa.selectionEnd=s+str.length;
+  _kbTa.dispatchEvent(new Event('input',{bubbles:true}));
+  _kbTa.focus();
+}
+function kbShow(ta){_kbTa=ta;const b=document.getElementById('kbb');if(b)b.classList.add('on');}
+function kbHide(){const b=document.getElementById('kbb');if(b)b.classList.remove('on');}
 
 function attachGridShortcuts(ta){
   if(ta._gridShortcuts)return;
@@ -617,9 +671,13 @@ function attachGridShortcuts(ta){
 }
 
 function attachAllGridShortcuts(){
-  document.querySelectorAll('.esec textarea').forEach(ta=>attachGridShortcuts(ta));
+  document.querySelectorAll('.esec textarea').forEach(ta=>{
+    attachGridShortcuts(ta);
+    ta.addEventListener('focus',()=>kbShow(ta));
+    ta.addEventListener('blur',()=>setTimeout(kbHide,200));
+  });
 }
-const _x={go,openImgFs,toggleView,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
+const _x={go,openImgFs,kbIns,kbShow,kbHide,toggleView,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 </body></html>
