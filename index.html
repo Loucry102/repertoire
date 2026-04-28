@@ -11,8 +11,14 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23161616'/><text y='68' x='50' text-anchor='middle' font-size='60' fill='white'>🎵</text></svg>">
 <title>Scène</title>
 <style>
-:root{--gc-bg:#1e1e1e;--gc-txt:#fff;--mi-bg:#1e1e1e;--mi-txt:#fff;}
-:root.light{--gc-bg:#fff;--gc-txt:#111;--mi-bg:#fff;--mi-txt:#111;}
+:root{
+  --gc-bg:#1e1e1e;--gc-txt:#fff;--mi-bg:#1e1e1e;--mi-txt:#fff;
+  --cw-bg:#1e1e1e;--cw-txt:#fff;--st-txt:#ccc;--sc-txt:#fff;--sep:#333;
+}
+:root.light{
+  --gc-bg:#fff;--gc-txt:#111;--mi-bg:#fff;--mi-txt:#111;
+  --cw-bg:#fff;--cw-txt:#111;--st-txt:#111;--sc-txt:#111;--sep:#ddd;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;width:100%;overflow:hidden;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 #app{position:fixed;inset:0;background:#161616;display:flex;flex-direction:column;overflow:hidden}
@@ -80,12 +86,12 @@ input::placeholder,textarea::placeholder{color:#aaa}
 .sml{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.05em}
 .smv{font-size:13px;color:#fff;font-weight:700}
 .sbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;padding-bottom:90px;min-height:0}
-.cw{background:#fff;border-radius:14px;padding:16px}
+.cw{background:var(--cw-bg,#fff);border-radius:14px;padding:16px}
 .sb{margin-bottom:24px}
-.st{font-size:18px;font-weight:700;color:#111;font-style:italic;letter-spacing:.03em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #ddd}
-.sc{font-size:24px;line-height:1.9;white-space:pre-wrap;word-break:break-word;color:#111;font-family:monospace;font-weight:700}
-.lw{background:#fff;border-radius:14px;padding:16px}
-.lt{font-size:24px;line-height:1.9;white-space:pre-wrap;word-break:break-word;color:#000;font-weight:700}
+.st{font-size:18px;font-weight:700;color:var(--st-txt,#111);font-style:italic;letter-spacing:.03em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--sep,#ddd)}
+.sc{font-size:24px;line-height:1.9;white-space:pre-wrap;word-break:break-word;color:var(--sc-txt,#111);font-family:monospace;font-weight:700}
+.lw{background:var(--cw-bg,#fff);border-radius:14px;padding:16px}
+.lt{font-size:24px;line-height:1.9;white-space:pre-wrap;word-break:break-word;color:var(--sc-txt,#000);font-weight:700}
 .zbar{position:fixed;bottom:max(env(safe-area-inset-bottom,0px),16px);left:16px;display:flex;align-items:center;gap:6px;background:#222;border-radius:14px;padding:7px 12px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.5)}
 .zb{width:38px;height:38px;font-size:22px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0}
 .etb{padding:12px 14px;padding-bottom:max(env(safe-area-inset-bottom,0px),12px);background:#161616;border-top:1px solid #333;display:flex;gap:10px;flex-shrink:0}
@@ -262,7 +268,7 @@ async function init(){go('sl0');try{await loadDB();}catch(e){// Pas de réseau �
 try{const sv=localStorage.getItem(LS.sess);if(sv){const u=JSON.parse(sv);A.usr={n:u.n,role:u.role||'editor'};afterLogin();return;}}catch(e2){}go('sl');return;}try{const sv=localStorage.getItem(LS.sess);if(sv){const u=JSON.parse(sv);if(DB.u?.[u.n]){A.usr={n:u.n,role:DB.u[u.n].r||DB.u[u.n].role||'editor'};afterLogin();return;}}}catch(e){}go('sl');}
 function afterLogin(){document.getElementById('wn').textContent=A.usr.n;A.alt=getAlt();A.theme=getTheme();applyTheme();const z=getZoom();A.lfs=z.lfs;A.cfs=z.cfs;go('si');}
 function doLogin(){const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value;document.getElementById('le').textContent='';if(!u||!p){document.getElementById('le').textContent='Remplissez tous les champs';return;}if(DB.u?.[u]?.h===p){A.usr={n:u,role:DB.u[u].r||DB.u[u].role||'editor'};try{localStorage.setItem(LS.sess,JSON.stringify(A.usr));}catch(e){}document.getElementById('lu').value='';document.getElementById('lp').value='';afterLogin();}else document.getElementById('le').textContent='Pseudo ou mot de passe incorrect';}
-function doLogout(){try{localStorage.removeItem(LS.sess);}catch(e){}A.usr=null;go('sl');}
+function doLogout(){try{localStorage.removeItem(LS.sess);}catch(e){}A.usr=null;A.theme='dark';applyTheme();go('sl');}
 function chooseInstr(t){A.ins=t;go('sg');}
 function canEdit(){return A.usr&&(A.usr.role==='admin'||A.usr.role==='editor');}
 function e(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
