@@ -609,74 +609,7 @@ function attachGridShortcuts(ta){
   if(ta._gridShortcuts)return;
   ta._gridShortcuts=true;
 
-  // État : est-on juste après une barre de répétition non validée ?
-  let inRep=false;  // true entre le premier "r" et l'espace de validation
-  let repOpen=true; // alterne [: et :]
 
-  function insert(str){
-    const s=ta.selectionStart,e=ta.selectionEnd;
-    ta.value=ta.value.slice(0,s)+str+ta.value.slice(e);
-    ta.selectionStart=ta.selectionEnd=s+str.length;
-    ta.dispatchEvent(new Event('input',{bubbles:true}));
-  }
-
-  function removeLast(str){
-    const s=ta.selectionStart;
-    if(ta.value.slice(s-str.length,s)===str){
-      ta.value=ta.value.slice(0,s-str.length)+ta.value.slice(s);
-      ta.selectionStart=ta.selectionEnd=s-str.length;
-      return true;
-    }
-    return false;
-  }
-
-  ta.addEventListener('keydown',function(ev){
-
-    // ── ESPACE ──────────────────────────────────────────────────
-    if(ev.key===' '){
-      ev.preventDefault();
-      if(inRep){
-        // Valider la barre de répétition — juste un espace
-        insert(' ');
-        inRep=false;
-        repOpen=true;
-      }else{
-        // Barre de mesure normale
-        insert(' | ');
-      }
-      return;
-    }
-
-    // ── R — BARRE DE RÉPÉTITION ──────────────────────────────────
-    if(ev.key==='r'||ev.key==='R'){
-      ev.preventDefault();
-      if(inRep){
-        // Remplacer la barre courante par l'autre
-        const cur=repOpen?'[:':':]';
-        const next=repOpen?':]':'[:';
-        if(removeLast(cur)){repOpen=!repOpen;insert(next);}
-      }else{
-        // Remplacer la barre de mesure " | " si elle précède le curseur
-        const s=ta.selectionStart;
-        if(ta.value.slice(s-3,s)===' | '){
-          ta.value=ta.value.slice(0,s-2)+ta.value.slice(s); // garde l'espace avant
-          ta.selectionStart=ta.selectionEnd=s-2;
-          ta.dispatchEvent(new Event('input',{bubbles:true}));
-        }
-        repOpen=true;
-        insert('[:');
-        inRep=true;
-      }
-      return;
-    }
-
-    // ── TOUTE AUTRE TOUCHE ───────────────────────────────────────
-    // Si on était en mode répétition et qu'on écrit un caractère, on sort du mode
-    // (l'espace redevient barre de mesure)
-    if(ev.key.length===1&&!ev.ctrlKey&&!ev.metaKey){
-      inRep=false;
-    }
-  });
 }
 
 function attachAllGridShortcuts(){
