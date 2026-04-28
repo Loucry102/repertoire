@@ -148,17 +148,15 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 .kb-bar{
   display:none;
   position:fixed;
-  bottom:0;left:0;right:0;
+  left:0;right:0;
   background:#222;
   border-top:1px solid #444;
   padding:8px 12px;
   gap:8px;
   z-index:9999;
-  -webkit-overflow-scrolling:touch;
-  overflow-x:auto;
-  flex-wrap:nowrap;
   align-items:center;
   justify-content:center;
+  transition:bottom .1s;
 }
 .kb-bar.on{display:flex}
 .kb-btn{
@@ -550,17 +548,21 @@ function aMem(){const u=(document.getElementById('nu')?.value||'').trim(),p=(doc
 function tRole(u){DB.u[u].r=DB.u[u].r==='editor'?'reader':'editor';sDB();cM();openAdmin();}
 function dMem(u){delete DB.u[u];sDB();cM();openAdmin();}
 // Gestion clavier virtuel mobile pour le modal
+function _updateKbPos(){
+  if(!window.visualViewport)return;
+  const vv=window.visualViewport;
+  const kbb=document.getElementById('kbb');
+  const kbHeight=Math.max(0,window.innerHeight-(vv.height+vv.offsetTop));
+  if(kbb&&kbb.classList.contains('on')){
+    kbb.style.bottom=kbHeight+'px';
+  }
+  // Modal
+  const mov=document.querySelector('.mov');
+  if(mov)mov.style.transform=kbHeight>100?'translateY(-'+Math.min(kbHeight,window.innerHeight*0.35)+'px)':'';
+}
 if(window.visualViewport){
-  window.visualViewport.addEventListener('resize',()=>{
-    const vv=window.visualViewport;
-    const kbHeight=window.innerHeight-vv.height-vv.offsetTop;
-    // Repositionner la barre clavier
-    const kbb=document.getElementById('kbb');
-    if(kbb)kbb.style.bottom=kbHeight>50?kbHeight+'px':'0';
-    // Repositionner le modal
-    const mov=document.querySelector('.mov');
-    if(mov)mov.style.transform=kbHeight>100?'translateY(-'+Math.min(kbHeight,window.innerHeight*0.4)+'px)':'';
-  });
+  window.visualViewport.addEventListener('resize',_updateKbPos);
+  window.visualViewport.addEventListener('scroll',_updateKbPos);
 }
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&document.getElementById('sl').classList.contains('on'))doLogin();});
 init();
@@ -602,8 +604,19 @@ function kbIns(str){
   _kbTa.dispatchEvent(new Event('input',{bubbles:true}));
   _kbTa.focus();
 }
-function kbShow(ta){_kbTa=ta;const b=document.getElementById('kbb');if(b)b.classList.add('on');}
-function kbHide(){const b=document.getElementById('kbb');if(b)b.classList.remove('on');}
+function kbShow(ta){
+  _kbTa=ta;
+  const b=document.getElementById('kbb');
+  if(!b)return;
+  b.classList.add('on');
+  // Position initiale
+  setTimeout(_updateKbPos,100);
+}
+function kbHide(){
+  const b=document.getElementById('kbb');
+  if(b){b.classList.remove('on');b.style.bottom='0';}
+  _kbTa=null;
+}
 
 function attachGridShortcuts(ta){
   if(ta._gridShortcuts)return;
