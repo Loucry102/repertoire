@@ -323,10 +323,10 @@ function doCT(nm,tgt){const s=DB.s?.[A.grp]?.[nm];if(!s){cM();return;}if(!DB.s[t
 function cfDel(nm){cDD();sM('<h3>Supprimer ?</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+nm+'"</p><div class="ma"><button class="cc" onclick="cM()">non</button><button class="dl" onclick="doDel(\''+e(nm)+'\')">oui</button></div>');}
 function doDel(nm){if(DB.s?.[A.grp])delete DB.s[A.grp][nm];sDB();cM();rRep('');}
 function pubChoice(){sM('<h3>Type de grille</h3><button class="bc" onclick="pubTxt()"><svg width="28" height="28" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="4" y1="14" x2="14" y2="14"/></svg><div><div style="font-weight:700">Grille texte</div><div class="bs">Transposition automatique</div></div></button><button class="bc" onclick="pubImg()"><svg width="28" height="28" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><div><div style="font-weight:700">Grille image</div><div class="bs">Import photo + paroles</div></div></button><div class="ma"><button class="cc" onclick="cM()">annuler</button></div>');}
-function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom</label><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><div class="ma"><button class="cc" onclick="pubChoice()">← retour</button><button onclick="doPubTxt()">publier</button></div>');rSF();}
+function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom</label><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><div class="ma"><button class="cc" onclick="pubChoice()">← retour</button><button onclick="doPubTxt()">publier</button></div>');rSF();setTimeout(attachAllGridShortcuts,50);}
 function capSF(){const cont=document.getElementById('sf2');if(!cont)return;cont.querySelectorAll('.esec').forEach((div,i)=>{const ta=div.querySelector('textarea'),inp=div.querySelector('input');if(ta&&A.psecs[i])A.psecs[i].c=ta.value;if(inp&&A.psecs[i])A.psecs[i].n=inp.value;});}
 function rSF(){const c=document.getElementById('sf2');if(!c)return;c.innerHTML='';A.psecs.forEach((s,i)=>{const d=document.createElement('div');d.className='esec';d.innerHTML='<div class="esh"><input value="'+s.n+'" placeholder="Nom" oninput="A.psecs['+i+'].n=this.value"/><button class="rm" onclick="rSec('+i+')">✕</button></div><textarea placeholder="Am  F  C  G..." oninput="A.psecs['+i+'].c=this.value">'+s.c+'</textarea>';c.appendChild(d);});}
-function aSec(){capSF();A.psecs.push({n:'Section '+(A.psecs.length+1),c:''});rSF();}
+function aSec(){attachAllGridShortcuts();capSF();A.psecs.push({n:'Section '+(A.psecs.length+1),c:''});rSF();}
 function rSec(i){capSF();A.psecs.splice(i,1);rSF();}
 function sPT(t){A.ptun=t;const pe=document.getElementById('pe'),pd=document.getElementById('pd');if(pe)pe.className='tn'+(t==='D'?' off':'');if(pd)pd.className='tn'+(t==='E'?' off':'');}
 function doPubTxt(){capSF();const nm=(document.getElementById('pn')?.value||'').trim();if(!nm){alert('Entrez un nom');return;}if(!DB.s[A.grp])DB.s[A.grp]={};DB.s[A.grp][nm]={tp:'text',sc:A.psecs.map(s=>({n:s.n||'Section',c:s.c||''})),ly:document.getElementById('pl')?.value||'',imgs:[],k:document.getElementById('pk')?.value||'C',m:document.getElementById('pm')?.value||'Majeur',t:A.ptun};sDB();cM();rRep('');}
@@ -419,8 +419,8 @@ document.addEventListener('click',()=>{if(document.getElementById('sf')?.classLi
 function sTab(t){A.tab=t;A.semi=0;rSong();}
 function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords')document.querySelectorAll('.sc').forEach((el,i)=>{if(A.sd.secs[i])el.textContent=trTxt(nrm(A.sd.secs[i].c||'',A.alt),A.semi);});}
 function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
-function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier';rES();go('se');}
-function sET(t){cEF();A.et=t;rES();}
+function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier';rES();go('se');setTimeout(attachAllGridShortcuts,50);}
+function sET(t){cEF();A.et=t;rES();setTimeout(attachAllGridShortcuts,50);}
 function cEF(){const body=document.getElementById('eb2');if(A.et==='lyrics'){const ta=body.querySelector('.ely');if(ta)A.ed.lyr=ta.value;}else{body.querySelectorAll('.esec').forEach((div,i)=>{const ta=div.querySelector('textarea'),inp=div.querySelector('input');if(ta&&A.ed.secs[i])A.ed.secs[i].c=ta.value;if(inp&&A.ed.secs[i])A.ed.secs[i].n=inp.value;});}}
 function rES(){
   const body=document.getElementById('eb2');body.innerHTML='';
@@ -454,7 +454,7 @@ function rES(){
     const w=document.createElement('div');w.className='lw';const ta=document.createElement('textarea');ta.className='ely';ta.value=A.ed.lyr||'';ta.oninput=()=>A.ed.lyr=ta.value;w.appendChild(ta);body.appendChild(w);
   }
 }
-function rES2(i){cEF();A.ed.secs.splice(i,1);rES();}
+function rES2(i){attachAllGridShortcuts();cEF();A.ed.secs.splice(i,1);rES();}
 function cancelEdit(){go('ss');}
 function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sc:JSON.parse(JSON.stringify(A.ed.secs)),ly:A.ed.lyr,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key)delete DB.s[A.grp][A.key];DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
 function openPrefs(){sM('<h3>Affichage</h3><label class="fl">Altérations</label><p style="color:#999;font-size:13px;margin-bottom:8px">Réglage propre à votre compte.</p><div class="sr"><button class="sbt'+(A.alt!=='sharp'?' off':'')+'" id="ps" onclick="apAlt(\'sharp\')">♯ Dièse</button><button class="sbt'+(A.alt!=='flat'?' off':'')+'" id="pf" onclick="apAlt(\'flat\')">♭ Bémol</button></div><label class="fl" style="margin-top:16px">Thème</label><p style="color:#999;font-size:13px;margin-bottom:8px">Affecte uniquement les boutons groupes et morceaux.</p><div class="sr"><button class="sbt'+(A.theme!=='dark'?' off':'')+'" id="ptd" onclick="apTheme(\'dark\')">🌙 Sombre</button><button class="sbt'+(A.theme!=='light'?' off':'')+'" id="ptl" onclick="apTheme(\'light\')">☀️ Clair</button></div><div class="ma"><button class="cc" onclick="cM()">fermer</button></div>');}
@@ -467,7 +467,66 @@ function tRole(u){DB.u[u].r=DB.u[u].r==='editor'?'reader':'editor';sDB();cM();op
 function dMem(u){delete DB.u[u];sDB();cM();openAdmin();}
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&document.getElementById('sl').classList.contains('on'))doLogin();});
 init();
-const _x={go,openImgFs,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
+
+// ── RACCOURCIS GRILLE ─────────────────────────────────────────
+function attachGridShortcuts(ta){
+  if(ta._gridShortcuts)return; // éviter double-attachement
+  ta._gridShortcuts=true;
+  let lastWasRep=false; // true si le dernier caractère inséré est une barre de répétition
+  let repOpen=true; // alterne entre [: et :]
+
+  ta.addEventListener('keydown',function(ev){
+    // Espace
+    if(ev.key===' '){
+      ev.preventDefault();
+      const start=ta.selectionStart,end=ta.selectionEnd;
+      const val=ta.value;
+      if(lastWasRep){
+        // Valider la répétition + espace normal
+        const ins=' ';
+        ta.value=val.slice(0,start)+ins+val.slice(end);
+        ta.selectionStart=ta.selectionEnd=start+ins.length;
+        lastWasRep=false;repOpen=true;
+      }else{
+        // Barre de mesure
+        const ins=' | ';
+        ta.value=val.slice(0,start)+ins+val.slice(end);
+        ta.selectionStart=ta.selectionEnd=start+ins.length;
+        lastWasRep=false;
+      }
+      ta.dispatchEvent(new Event('input',{bubbles:true}));
+      return;
+    }
+    // R — barre de répétition
+    if(ev.key==='r'||ev.key==='R'){
+      ev.preventDefault();
+      const start=ta.selectionStart,end=ta.selectionEnd;
+      let val=ta.value;
+      if(lastWasRep){
+        // Remplacer la dernière barre de répétition
+        const prev=repOpen?'[: ':':]';
+        const idx=val.lastIndexOf(prev,start-1);
+        if(idx>=0){val=val.slice(0,idx)+val.slice(idx+prev.length);ta.value=val;ta.selectionStart=ta.selectionEnd=idx;}
+      }
+      repOpen=!lastWasRep?true:!repOpen;
+      const ins=repOpen?'[: ':':]';
+      const pos=ta.selectionStart;
+      ta.value=val.slice(0,pos)+ins+val.slice(pos);
+      ta.selectionStart=ta.selectionEnd=pos+ins.length;
+      lastWasRep=true;
+      ta.dispatchEvent(new Event('input',{bubbles:true}));
+      return;
+    }
+    // Toute autre touche remet lastWasRep à false
+    if(ev.key.length===1)lastWasRep=false;
+  });
+}
+
+// Observer les textareas de grille pour attacher les raccourcis
+function attachAllGridShortcuts(){
+  document.querySelectorAll('.esec textarea').forEach(ta=>attachGridShortcuts(ta));
+}
+const _x={go,openImgFs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 </body></html>
