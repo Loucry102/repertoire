@@ -195,16 +195,39 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
     <div style="font-size:20px;font-weight:700;color:#fff;text-align:center">choisissez votre rôle</div>
     <div class="irow" style="max-width:500px">
       <button class="icard" onclick="chooseInstr('chords')">
-        <svg width="52" height="52" viewBox="0 0 42 42" fill="none"><rect x="18" y="3" width="6" height="16" rx="3" fill="#ccc"/><ellipse cx="21" cy="30" rx="9" ry="7" fill="#eee" stroke="#333" stroke-width="1.5"/><line x1="21" y1="3" x2="21" y2="38" stroke="#333" stroke-width="1.5"/><line x1="17" y1="10" x2="25" y2="10" stroke="#333" stroke-width="1.5"/><line x1="17" y1="16" x2="25" y2="16" stroke="#333" stroke-width="1.5"/><circle cx="21" cy="30" r="2" fill="#333"/></svg>
-        <span style="color:#111">guitare</span>
+<svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Manche -->
+  <rect x="20" y="2" width="4" height="17" rx="2" fill="#555"/>
+  <!-- Tête -->
+  <rect x="17" y="2" width="10" height="5" rx="2.5" fill="#444"/>
+  <!-- Mécaniques -->
+  <circle cx="17" cy="3.5" r="1.2" fill="#777"/>
+  <circle cx="27" cy="3.5" r="1.2" fill="#777"/>
+  <circle cx="17" cy="6" r="1.2" fill="#777"/>
+  <circle cx="27" cy="6" r="1.2" fill="#777"/>
+  <!-- Frettes -->
+  <line x1="19" y1="10" x2="25" y2="10" stroke="#888" stroke-width="0.8"/>
+  <line x1="19" y1="13" x2="25" y2="13" stroke="#888" stroke-width="0.8"/>
+  <line x1="19" y1="16" x2="25" y2="16" stroke="#888" stroke-width="0.8"/>
+  <!-- Corps — forme de 8 acoustique -->
+  <path d="M22 19 C14 19 10 23 10 28 C10 31 12 33 14 34 C12 36 11 38 11 40 C11 43 15 46 22 46 C29 46 33 43 33 40 C33 38 32 36 30 34 C32 33 34 31 34 28 C34 23 30 19 22 19Z" fill="#e8d5a3" stroke="#888" stroke-width="1.2"/>
+  <!-- Étranglement du corps -->
+  <path d="M13 34 C16 32 28 32 31 34" stroke="#aaa" stroke-width="0.8" fill="none"/>
+  <!-- Rosace -->
+  <circle cx="22" cy="34" r="4.5" fill="none" stroke="#888" stroke-width="1"/>
+  <circle cx="22" cy="34" r="2.5" fill="none" stroke="#aaa" stroke-width="0.6"/>
+  <!-- Cordier -->
+  <rect x="18" y="40" width="8" height="2" rx="1" fill="#666"/>
+</svg>
+        <span style="color:#111;font-weight:600">Guitare</span>
       </button>
       <button class="icard" onclick="chooseInstr('bass')">
-        <svg width="52" height="52" viewBox="0 0 42 42" fill="none"><rect x="19" y="2" width="4" height="18" rx="2" fill="#ccc"/><ellipse cx="21" cy="31" rx="10" ry="8" fill="#eee" stroke="#333" stroke-width="1.5"/><line x1="21" y1="2" x2="21" y2="39" stroke="#333" stroke-width="1.5"/><line x1="16" y1="9" x2="26" y2="9" stroke="#333" stroke-width="1.5"/><circle cx="21" cy="31" r="2.5" fill="#333"/></svg>
-        <span style="color:#111">basse</span>
+<span style="font-size:44px">🎸</span>
+        <span style="color:#111;font-weight:600">Basse</span>
       </button>
       <button class="icard" onclick="chooseInstr('lyrics')">
-        <svg width="52" height="52" viewBox="0 0 42 42" fill="none"><rect x="15" y="5" width="12" height="18" rx="6" fill="#eee" stroke="#333" stroke-width="1.5"/><path d="M7 22c0 7.7 6.3 14 14 14s14-6.3 14-14" stroke="#333" stroke-width="1.5" stroke-linecap="round"/><line x1="21" y1="36" x2="21" y2="40" stroke="#333" stroke-width="1.5" stroke-linecap="round"/><line x1="15" y1="40" x2="27" y2="40" stroke="#333" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <span style="color:#111">chant</span>
+<span style="font-size:44px">🎤</span>
+        <span style="color:#111;font-weight:600">Chant</span>
       </button>
     </div>
   </div>
@@ -598,6 +621,17 @@ function rES(){
     kr.appendChild(sK);kr.appendChild(sM2);body.appendChild(kr);
     body.appendChild(lbl('Images (optionnel)'));
     rEdImgs(body);
+    // Bouton supprimer — tout en bas, uniquement si les deux grilles existent
+    const _otherKey=A._edInst==='guitar'?'secs_b':'secs_g';
+    const _thisKey=A._edInst==='guitar'?'secs_g':'secs_b';
+    if(A.ed[_thisKey]&&A.ed[_thisKey].length>0&&A.ed[_otherKey]&&A.ed[_otherKey].length>0){
+      const _delLabel='Supprimer la grille '+(A._edInst==='guitar'?'Guitare':'Basse');
+      const _delBtn=mk('button','width:100%;padding:14px;border-radius:13px;margin-top:16px;background:#e74c3c!important;color:#fff!important;font-size:15px;font-weight:700',
+        _delLabel,()=>{
+          sM('<h3>Supprimer ?</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">Supprimer définitivement la grille '+(A._edInst==='guitar'?'Guitare':'Basse')+' de ce morceau ?</p><div class="ma"><button class="cc" onclick="cM()">annuler</button><button class="dl" onclick="doDelGrid()">oui, supprimer</button></div>');
+        });
+      body.appendChild(_delBtn);
+    }
   }else{
     const w=document.createElement('div');w.className='lw';const ta=document.createElement('textarea');ta.className='ely';ta.value=A.ed.lyr||'';ta.oninput=()=>A.ed.lyr=ta.value;w.appendChild(ta);body.appendChild(w);
   }
@@ -605,6 +639,20 @@ function rES(){
   setTimeout(attachAllGridShortcuts,50);
 }
 function rES2(i){attachAllGridShortcuts();cEF();A.ed.secs.splice(i,1);rES();}
+function doDelGrid(){
+  const key=A._edInst==='guitar'?'secs_g':'secs_b';
+  const dbKey=A._edInst==='guitar'?'sg':'sb';
+  A.ed[key]=[];
+  // Mettre à jour Firebase
+  const s=DB.s?.[A.grp]?.[A.key];
+  if(s){s[dbKey]=[];sDB();}
+  cM();
+  // Si on supprime la grille courante, passer à l'autre
+  if(A.instMode===(A._edInst==='guitar'?'guitar':'bass')){
+    A.instMode=A._edInst==='guitar'?'bass':'guitar';
+  }
+  cancelEdit();
+}
 function cancelEdit(){go('ss');}
 function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key)delete DB.s[A.grp][A.key];DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
 function openPrefs(){sM('<h3>Affichage</h3><label class="fl">Altérations</label><p style="color:#999;font-size:13px;margin-bottom:8px">Réglage propre à votre compte.</p><div class="sr"><button class="sbt'+(A.alt!=='sharp'?' off':'')+'" id="ps" onclick="apAlt(\'sharp\')">♯ Dièse</button><button class="sbt'+(A.alt!=='flat'?' off':'')+'" id="pf" onclick="apAlt(\'flat\')">♭ Bémol</button></div><label class="fl" style="margin-top:16px">Thème</label><p style="color:#999;font-size:13px;margin-bottom:8px">Affecte uniquement les boutons groupes et morceaux.</p><div class="sr"><button class="sbt'+(A.theme!=='dark'?' off':'')+'" id="ptd" onclick="apTheme(\'dark\')">🌙 Sombre</button><button class="sbt'+(A.theme!=='light'?' off':'')+'" id="ptl" onclick="apTheme(\'light\')">☀️ Clair</button></div><div class="ma"><button class="cc" onclick="cM()">fermer</button></div>');}
@@ -708,13 +756,13 @@ function doAddInstGrid(){
     A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
     A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
     A.instMode=A._addInst;
-    cM();rSong();
+    cM();rSong();rRep('');
   }).catch(e=>{
     console.warn('sync error',e);
     A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
     A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
     A.instMode=A._addInst;
-    cM();rSong();
+    cM();rSong();rRep('');
   });
 }
 function getCurSecs(){
@@ -756,6 +804,7 @@ function rEdSecs(body,inst){
     d.appendChild(esh);d.appendChild(textarea);body.appendChild(d);
   });
   const ab=mk('button','','+ ajouter une section',()=>{A.ed[key].push({n:'Section '+(A.ed[key].length+1),c:''});rES();});ab.className='asec';body.appendChild(ab);
+
   // Bouton copier/coller
   const cpRow=document.createElement('div');cpRow.style.cssText='display:flex;gap:8px;margin-top:8px';
   const cpBtn=mk('button','flex:1;padding:10px;border-radius:10px;font-size:13px','Copier la grille',()=>{
@@ -831,7 +880,7 @@ function attachAllGridShortcuts(){
     ta.addEventListener('blur',()=>setTimeout(kbHide,200));
   });
 }
-const _x={go,openImgFs,kbIns,kbShow,kbHide,toggleView,toggleInst,addInstGrid,doAddInstGrid,rSFAdd,aSecAdd,rSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
+const _x={go,openImgFs,kbIns,kbShow,kbHide,toggleView,toggleInst,addInstGrid,doAddInstGrid,doDelGrid,rSFAdd,aSecAdd,rSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 </body></html>
