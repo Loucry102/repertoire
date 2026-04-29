@@ -693,17 +693,18 @@ function capSFAdd(){
 }
 function doAddInstGrid(){
   capSFAdd();
-  const key=A._addInst==='bass'?'secs_b':'secs_g';
+  const jsKey=A._addInst==='bass'?'secs_b':'secs_g';
+  const dbKey=A._addInst==='bass'?'sb':'sg'; // clé Firebase
   const secs=A.psecs.map(s=>({n:s.n||'Section',c:s.c||''}));
   const tun=A.ptun||'E';
   const tkey=document.getElementById('pk2')?.value||A.sd.tkey||'C';
   const mode=document.getElementById('pm2')?.value||A.sd.mode||'Majeur';
-  // Mettre à jour Firebase
+  // Mettre à jour Firebase avec les bonnes clés
   const s=DB.s?.[A.grp]?.[A.key];if(!s)return;
-  s[key]=secs;s.t=tun;s.k=tkey;s.m=mode;
+  s[dbKey]=secs;s.t=tun;s.k=tkey;s.m=mode;
   sDB();
   // Mettre à jour A.sd
-  A.sd[key]=JSON.parse(JSON.stringify(secs));
+  A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
   A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
   A.instMode=A._addInst;
   cM();rSong();
