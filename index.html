@@ -702,12 +702,20 @@ function doAddInstGrid(){
   // Mettre à jour Firebase avec les bonnes clés
   const s=DB.s?.[A.grp]?.[A.key];if(!s)return;
   s[dbKey]=secs;s.t=tun;s.k=tkey;s.m=mode;
-  sDB();
-  // Mettre à jour A.sd
-  A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
-  A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
-  A.instMode=A._addInst;
-  cM();rSong();
+  // Attendre que Firebase soit synced avant de continuer
+  setDoc(_doc,DB).then(()=>{
+    // Mettre à jour A.sd après confirmation Firebase
+    A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
+    A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
+    A.instMode=A._addInst;
+    cM();rSong();
+  }).catch(e=>{
+    console.warn('sync error',e);
+    A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
+    A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
+    A.instMode=A._addInst;
+    cM();rSong();
+  });
 }
 function getCurSecs(){
   if(A.instMode==='bass') return A.sd.secs_b.length>0?A.sd.secs_b:(A.sd.secs_g.length>0?A.sd.secs_g:[]);
