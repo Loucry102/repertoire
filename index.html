@@ -527,18 +527,24 @@ function rSong(){
   if(ib2&&t==='chords'&&A.viewMode==='text'){
     const otherHas=hasOtherSecs();
     const otherLabel=A.instMode==='guitar'?'basse':'guitare';
-    ib2.style.display='flex';
-    ib2.style.fontSize='15px';
-    ib2.style.fontWeight='700';
     if(otherHas){
+      ib2.style.display='flex';
+      ib2.style.fontSize='15px';
+      ib2.style.fontWeight='700';
       ib2.textContent=A.instMode==='guitar'?'voir basse':'voir guitare';
       ib2.className=A.instMode==='guitar'?'btn-bass':'btn-guitar';
       ib2.onclick=toggleInst;
-    }else{
+    }else if(!A.slMode){
+      // Hors setlist : bouton ajouter
+      ib2.style.display='flex';
+      ib2.style.fontSize='15px';
+      ib2.style.fontWeight='700';
       ib2.textContent='+ '+(A.instMode==='guitar'?'Basse':'Guitare');
       ib2.className='btn-add-inst';
       const _target=A.instMode==='guitar'?'bass':'guitar';
       ib2.onclick=()=>addInstGrid(_target);
+    }else{
+      ib2.style.display='none';
     }
   }else if(ib2)ib2.style.display='none';
   const tb=document.getElementById('view-toggle');
@@ -1070,6 +1076,7 @@ function goSlDetail(grp,idx){
       row.ondragstart=e=>{dragSrc=i;e.dataTransfer.effectAllowed='move';setTimeout(()=>row.style.opacity='0.4',0);};
       // Touch support
       row.addEventListener('touchmove',e=>{
+        if(dragSrc===null)return; // pas de drag actif → scroll normal
         e.preventDefault();
         const t=e.touches[0];
         if(row._touchClone){row._touchClone.style.top=(t.clientY-30)+'px';}
