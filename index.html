@@ -159,6 +159,8 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
   transition:bottom .1s;
 }
 .kb-bar.on{display:flex}
+.alt-active{background:#fff!important;color:#111!important;box-shadow:inset 0 0 0 2.5px #111}
+.alt-inactive{background:#fff!important;color:#bbb!important}
 .btn-guitar{background:#27ae60!important;color:#fff!important}
 .btn-bass{background:#9b59b6!important;color:#fff!important}
 .btn-add-inst{background:#27ae60!important;color:#fff!important}
@@ -257,6 +259,11 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
     <div class="ttog"><button class="ttb" id="tc" onclick="sTab('chords')">grilles</button><button class="ttb" id="tl" onclick="sTab('lyrics')">paroles</button></div>
     <div class="tz" id="tz"><button class="tb" onclick="tr(-1)">−</button><span class="ti" id="td">0</span><button class="tb" onclick="tr(+1)">+</button></div>
     <button class="ib" id="eb" onclick="startEdit()"><svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+    <div style="flex:1"></div>
+    <div id="alt-toggle" style="display:flex;border-radius:11px;overflow:hidden;flex-shrink:0;border:2px solid #333">
+      <button id="alt-sharp" onclick="apAltDirect('sharp')" style="padding:0 18px;height:42px;font-size:16px;font-weight:800;border-radius:0;border-right:1px solid #ddd;min-width:52px">♯</button>
+      <button id="alt-flat" onclick="apAltDirect('flat')" style="padding:0 18px;height:42px;font-size:16px;font-weight:800;border-radius:0;min-width:52px">♭</button>
+    </div>
   </div>
   <div class="stbar">
     <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
@@ -462,7 +469,7 @@ function oSong(nm){A.key=nm;A.semi=0;const s=DB.s?.[A.grp]?.[nm]||{};
   if(A.ins==='bass') A.instMode=_sb.length>0?'bass':(_sg.length>0?'guitar':'bass');
   else A.instMode=_sg.length>0?'guitar':(_sb.length>0?'bass':'guitar');
   A.viewMode=(_sg.length>0||_sb.length>0)?'text':'image';
-  document.getElementById('stf').textContent=nm;A.tab=A.ins==='lyrics'?'lyrics':'chords';const z=getZoom();A.lfs=z.lfs;A.cfs=z.cfs;document.getElementById('eb').style.display=canEdit()?'flex':'none';rSong();go('ss');}
+  document.getElementById('stf').textContent=nm;A.tab=A.ins==='lyrics'?'lyrics':'chords';const z=getZoom();A.lfs=z.lfs;A.cfs=z.cfs;document.getElementById('eb').style.display=canEdit()?'flex':'none';_updateAltToggle();rSong();go('ss');}
 function rSong(){
   const t=A.tab;
   // Bouton bascule : visible si le morceau a les deux types
@@ -655,8 +662,18 @@ function doDelGrid(){
 }
 function cancelEdit(){go('ss');}
 function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key)delete DB.s[A.grp][A.key];DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
-function openPrefs(){sM('<h3>Affichage</h3><label class="fl">Altérations</label><p style="color:#999;font-size:13px;margin-bottom:8px">Réglage propre à votre compte.</p><div class="sr"><button class="sbt'+(A.alt!=='sharp'?' off':'')+'" id="ps" onclick="apAlt(\'sharp\')">♯ Dièse</button><button class="sbt'+(A.alt!=='flat'?' off':'')+'" id="pf" onclick="apAlt(\'flat\')">♭ Bémol</button></div><label class="fl" style="margin-top:16px">Thème</label><p style="color:#999;font-size:13px;margin-bottom:8px">Affecte uniquement les boutons groupes et morceaux.</p><div class="sr"><button class="sbt'+(A.theme!=='dark'?' off':'')+'" id="ptd" onclick="apTheme(\'dark\')">🌙 Sombre</button><button class="sbt'+(A.theme!=='light'?' off':'')+'" id="ptl" onclick="apTheme(\'light\')">☀️ Clair</button></div><div class="ma"><button class="cc" onclick="cM()">fermer</button></div>');}
+function openPrefs(){sM('<h3>Affichage</h3><label class="fl">Thème</label><p style="color:#999;font-size:13px;margin-bottom:8px">Affecte uniquement les boutons groupes et morceaux.</p><div class="sr"><button class="sbt'+(A.theme!=='dark'?' off':'')+'" id="ptd" onclick="apTheme(\'dark\')">🌙 Sombre</button><button class="sbt'+(A.theme!=='light'?' off':'')+'" id="ptl" onclick="apTheme(\'light\')">☀️ Clair</button></div><div class="ma"><button class="cc" onclick="cM()">fermer</button></div>');}
 function apAlt(v){setAlt(v);const ps=document.getElementById('ps'),pf=document.getElementById('pf');if(ps)ps.className='sbt'+(v!=='sharp'?' off':'');if(pf)pf.className='sbt'+(v!=='flat'?' off':'');}
+function apAltDirect(v){
+  setAlt(v);
+  _updateAltToggle();
+  rSong();
+}
+function _updateAltToggle(){
+  const bs=document.getElementById('alt-sharp'),bf=document.getElementById('alt-flat');
+  if(bs)bs.className=A.alt==='sharp'?'alt-active':'alt-inactive';
+  if(bf)bf.className=A.alt==='flat'?'alt-active':'alt-inactive';
+}
 function apTheme(v){setTheme(v);const pd=document.getElementById('ptd'),pl=document.getElementById('ptl');if(pd)pd.className='sbt'+(v!=='dark'?' off':'');if(pl)pl.className='sbt'+(v!=='light'?' off':'');}
 function openAdmin(){const users=DB.u||{};const rows=Object.entries(users).map(([u,ud])=>'<div class="mem"><span class="memn">'+u+'</span><span class="memr">'+(ud.r==='admin'?'admin':ud.r==='editor'?'éditeur':'lecteur')+'</span>'+(u!=='titi'?'<button class="smb" onclick="tRole(\''+e(u)+'\')">rôle</button><button class="smb dl" onclick="dMem(\''+e(u)+'\')">✕</button>':'')+'</div>').join('');A._nr='editor';sM('<h3>Membres</h3>'+(rows||'<p style="color:#aaa;font-size:15px;margin-bottom:12px">Aucun membre</p>')+'<label class="fl" style="margin-top:16px">Ajouter un membre</label><input class="fi" id="nu" placeholder="Pseudo" type="text" style="margin-bottom:10px"/><input class="fi" id="np" placeholder="Mot de passe" type="password" style="margin-bottom:10px"/><div class="sr" style="margin-bottom:14px"><button class="sbt" id="re" onclick="sNR(\'editor\')">éditeur</button><button class="sbt off" id="rr" onclick="sNR(\'reader\')">lecteur</button></div><div class="ma"><button class="cc" onclick="cM()">fermer</button><button onclick="aMem()">ajouter</button></div>');}
 function sNR(r){A._nr=r;const re=document.getElementById('re'),rr=document.getElementById('rr');if(re)re.className='sbt'+(r!=='editor'?' off':'');if(rr)rr.className='sbt'+(r!=='reader'?' off':'');}
@@ -880,7 +897,7 @@ function attachAllGridShortcuts(){
     ta.addEventListener('blur',()=>setTimeout(kbHide,200));
   });
 }
-const _x={go,openImgFs,kbIns,kbShow,kbHide,toggleView,toggleInst,addInstGrid,doAddInstGrid,doDelGrid,rSFAdd,aSecAdd,rSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
+const _x={go,openImgFs,kbIns,kbShow,kbHide,toggleView,toggleInst,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,rSFAdd,aSecAdd,rSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 </body></html>
