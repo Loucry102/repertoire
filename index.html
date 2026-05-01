@@ -494,15 +494,14 @@ function oSong(nm){A.key=nm;A.semi=0;const s=DB.s?.[A.grp]?.[nm]||{};
       const nav=document.createElement('div');nav.id='sl-nav';nav.style.cssText='display:flex;align-items:center;gap:6px;margin-left:8px';
       const prevB=mk('button','','←',slPrev);prevB.id='sl-prev';prevB.className='ib';prevB.style.fontSize='18px';
       const nextB=mk('button','','→',slNext);nextB.id='sl-next';nextB.className='ib';nextB.style.fontSize='18px';
-      const exitB=mk('button','','✕',exitSl);exitB.style.cssText='padding:0 10px;height:36px;border-radius:10px;font-size:11px;font-weight:700;background:#e74c3c!important;color:#fff!important';
-      nav.appendChild(prevB);nav.appendChild(nextB);nav.appendChild(exitB);
+      nav.appendChild(prevB);nav.appendChild(nextB);
       const _hdr=document.querySelector('#ss .shdr');if(_hdr)_hdr.appendChild(nav);
     }
     const _sl=DB.sl?.[A.slCtx.grp]?.[A.slCtx.id];
     const _prev=document.getElementById('sl-prev'),_next=document.getElementById('sl-next');
     if(_prev)_prev.style.opacity=A.slCtx.idx===0?'0.3':'1';
     if(_next)_next.style.opacity=_sl&&A.slCtx.idx>=(_sl.morceaux||[]).length-1?'0.3':'1';
-  }else if(_slnav){_slnav.remove();}_updateAltToggle();rSong();go('ss');}
+  }else if(_slnav){_slnav.remove();}_updateAltToggle();rSong();go('ss');setTimeout(()=>{const _sb=document.getElementById('sb');if(_sb)_sb.scrollTop=0;},50);}
 function rSong(){
   const t=A.tab;
   // Bouton bascule : visible si le morceau a les deux types
@@ -1058,8 +1057,60 @@ function goSlDetail(grp,idx){
         const del=mk('button','width:32px;height:32px;border-radius:9px;font-size:14px;padding:0;flex-shrink:0;background:#e74c3c!important;color:#fff!important','✕',()=>{morceaux.splice(i,1);sDB();goSlDetail(grp,idx);});
         row.appendChild(del);
       }
-      // Drag & drop — insert between
+      // Drag & drop — insert between (mouse + touch)
       row.ondragstart=e=>{dragSrc=i;e.dataTransfer.effectAllowed='move';setTimeout(()=>row.style.opacity='0.4',0);};
+      // Touch support
+      row.addEventListener('touchstart',e=>{
+        if(!canEdit())return;
+        dragSrc=i;
+        row.style.opacity='0.7';
+        row._touchClone=row.cloneNode(true);
+        row._touchClone.style.cssText='position:fixed;z-index:9999;opacity:0.85;pointer-events:none;width:'+row.offsetWidth+'px;left:'+row.getBoundingClientRect().left+'px;top:'+row.getBoundingClientRect().top+'px;margin:0';
+        document.body.appendChild(row._touchClone);
+      },{passive:true});
+      row.addEventListener('touchmove',e=>{
+        e.preventDefault();
+        const t=e.touches[0];
+        if(row._touchClone){row._touchClone.style.top=(t.clientY-30)+'px';}
+        document.querySelectorAll('.sl-drop-line').forEach(l=>l.remove());
+        // Trouver la row sous le doigt
+        row._touchClone.style.display='none';
+        const el=document.elementFromPoint(t.clientX,t.clientY);
+        row._touchClone.style.display='';
+        const targetRow=el?.closest('.mi');
+        if(targetRow&&targetRow!==row){
+          const rect=targetRow.getBoundingClientRect();
+          const after=t.clientY>rect.top+rect.height/2;
+          const line=document.createElement('div');line.className='sl-drop-line';
+          line.style.cssText='height:3px;background:#27ae60;border-radius:2px;margin:0';
+          if(after)targetRow.after(line);else targetRow.before(line);
+        }
+        // Auto-scroll
+        if(t.clientY<80)wrap.scrollTop-=8;
+        else if(t.clientY>window.innerHeight-80)wrap.scrollTop+=8;
+      },{passive:false});
+      row.addEventListener('touchend',e=>{
+        row.style.opacity='1';
+        if(row._touchClone){document.body.removeChild(row._touchClone);delete row._touchClone;}
+        const line=document.querySelector('.sl-drop-line');
+        if(line&&dragSrc!==null){
+          const allRows=[...wrap.querySelectorAll('.mi')];
+          let insertAt=allRows.length;
+          for(let j=0;j<allRows.length;j++){
+            if(line.previousElementSibling===allRows[j]){insertAt=j+1;break;}
+            if(line.nextElementSibling===allRows[j]){insertAt=j;break;}
+          }
+          document.querySelectorAll('.sl-drop-line').forEach(l=>l.remove());
+          if(insertAt!==dragSrc&&insertAt!==dragSrc+1){
+            const moved=morceaux.splice(dragSrc,1)[0];
+            const finalPos=dragSrc<insertAt?insertAt-1:insertAt;
+            morceaux.splice(finalPos,0,moved);
+            dragSrc=null;sDB();goSlDetail(grp,idx);return;
+          }
+        }
+        document.querySelectorAll('.sl-drop-line').forEach(l=>l.remove());
+        dragSrc=null;
+      });
       row.ondragend=e=>{
         row.style.opacity='1';
         // Si on lâche et qu'une ligne verte est visible, insérer là
