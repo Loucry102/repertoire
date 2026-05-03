@@ -328,8 +328,22 @@ import{getFirestore,doc,getDoc,setDoc}from'https://www.gstatic.com/firebasejs/10
 const _app=initializeApp({apiKey:"AIzaSyDvA_gyHZkMshBvoU8CeaTIkpGJAnxSrQ4",authDomain:"repertoir-da9bb.firebaseapp.com",projectId:"repertoir-da9bb",storageBucket:"repertoir-da9bb.firebasestorage.app",messagingSenderId:"431935454307",appId:"1:431935454307:web:4990adc2bc52d3818f8c56"});
 const _db=getFirestore(_app);const _doc=doc(_db,'scene','data');
 let DB=null;
-async function loadDB(){const snap=await getDoc(_doc);if(snap.exists()){DB=snap.data();}else{DB={u:{titi:{h:'Loucry102',r:'admin'}},s:{'Lily Cry':{},'Lou Smile':{},'RN102':{}},g:[{n:'Lily Cry',c:'#e74c3c'},{n:'Lou Smile',c:'#3498db'},{n:'RN102',c:'#27ae60'}]};await setDoc(_doc,DB);}if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];}
-function sDB(){setDoc(_doc,DB).catch(e=>console.warn('sync',e));}
+async function loadDB(){
+  try{
+    const snap=await getDoc(_doc);
+    if(snap.exists()){DB=snap.data();localStorage.setItem('scene_db',JSON.stringify(DB));}
+    else{DB={u:{titi:{h:'Loucry102',r:'admin'}},s:{'Lily Cry':{},'Lou Smile':{},'RN102':{}},g:[{n:'Lily Cry',c:'#e74c3c'},{n:'Lou Smile',c:'#3498db'},{n:'RN102',c:'#27ae60'}]};await setDoc(_doc,DB);localStorage.setItem('scene_db',JSON.stringify(DB));}
+  }catch(e){
+    const cached=localStorage.getItem('scene_db');
+    if(cached){try{DB=JSON.parse(cached);}catch(e2){DB={};}}
+    else DB={};
+  }
+  if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};
+}
+async function sDB(){
+  try{await setDoc(_doc,DB);}catch(e){}
+  localStorage.setItem('scene_db',JSON.stringify(DB));
+}
 async function compressImg(file){
   return new Promise(resolve=>{
     const img=new Image();
