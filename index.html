@@ -735,19 +735,26 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('resize',_updateKbPos);
   window.visualViewport.addEventListener('scroll',_updateKbPos);
 }
+function _shouldCloseKb(target){
+  const kbb=document.getElementById('kbb');
+  if(kbb&&kbb.contains(target))return false;
+  // Input dans .esh (renommer section) → fermer pour laisser le vrai clavier
+  if(target.tagName==='INPUT'&&target.closest&&target.closest('.esh'))return true;
+  // Textarea dans .esec → garder (c'est une section grille)
+  if(target.tagName==='TEXTAREA'&&target.closest&&target.closest('.esec'))return false;
+  // Tout autre esec → garder
+  if(target.closest&&target.closest('.esec'))return false;
+  const tag=target.tagName;
+  if(['BUTTON','SELECT','LABEL','A','INPUT','TEXTAREA'].includes(tag))return true;
+  return false;
+}
 document.addEventListener('mousedown',e=>{
   if(!_kbTa)return;
-  const kbb=document.getElementById('kbb');
-  if(kbb&&kbb.contains(e.target))return; // clic sur le clavier — garder ouvert
-  if(e.target.closest&&e.target.closest('.esec'))return; // clic sur une section — garder ouvert
-  kbHide(); // clic ailleurs — fermer
+  if(_shouldCloseKb(e.target))kbHide();
 });
 document.addEventListener('touchstart',e=>{
   if(!_kbTa)return;
-  const kbb=document.getElementById('kbb');
-  if(kbb&&kbb.contains(e.target))return;
-  if(e.target.closest&&e.target.closest('.esec'))return;
-  kbHide();
+  if(_shouldCloseKb(e.touches[0]?.target||e.target))kbHide();
 },{passive:true});
 
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&document.getElementById('sl').classList.contains('on'))doLogin();});
@@ -1341,7 +1348,6 @@ Object.entries(_x).forEach(([k,v])=>window[k]=v);
     <button onmousedown="event.preventDefault()" onclick="kbDel()" style="flex:2;height:76px;background:#2d1515!important;color:#e74c3c!important;font-size:24px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">⌫</button>
     <button onmousedown="event.preventDefault()" onclick="kbHide();if(_kbTa)_kbTa.blur()" style="flex:2;height:76px;background:#222!important;color:#888!important;font-size:18px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">⌨️</button>
   </div>
-</div>
-  <div style="height:18px;background:#111;margin:4px -4px 0;border-top:2px solid #1a1a1a"></div>
+  <div style="height:60px;background:#111;margin:0 -4px;border-top:2px solid #1a1a1a"></div>
 </div>
 </body></html>
