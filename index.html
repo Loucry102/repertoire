@@ -243,12 +243,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
   <div class="shdr">
     <button class="bk" onclick="go('sr')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
     <div class="ttog"><button class="ttb" id="tc" onclick="sTab('chords')">grilles</button><button class="ttb" id="tl" onclick="sTab('lyrics')">paroles</button></div>
-    <div class="tz" id="tz"><button class="tb" onclick="tr(-1)">−</button><span class="ti" id="td">0</span><button class="tb" onclick="tr(+1)">+</button></div>
     <button class="ib" id="eb" onclick="startEdit()"><svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-    <div id="alt-toggle" style="display:flex;border-radius:11px;overflow:hidden;flex-shrink:0;background:#e0e0e0;margin-left:auto;padding:2px;gap:2px">
-      <button id="alt-sharp" onclick="apAltDirect('sharp')" style="padding:0 9px;height:34px;font-size:14px;font-weight:800;border-radius:9px 0 0 9px;border-right:1px solid #ddd;min-width:34px">♯</button>
-      <button id="alt-flat" onclick="apAltDirect('flat')" style="padding:0 9px;height:34px;font-size:14px;font-weight:800;border-radius:0 9px 9px 0;min-width:34px">♭</button>
-    </div>
   </div>
   <div class="stbar">
     <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
@@ -256,10 +251,17 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
       <div id="inst-badge" style="display:none;font-size:16px;color:#aaa;font-weight:600"></div>
     </div>
   </div>
-  <div id="smt" style="display:none;padding:7px 16px;background:#111;border-bottom:1px solid #333;display:flex;gap:22px;flex-shrink:0">
-    <div><div class="sml">accordage</div><div class="smv" id="smtun"></div></div>
-    <div style="width:1px;background:#333;align-self:stretch;margin:0 4px"></div>
-    <div><div class="sml">tonalité</div><div class="smv" id="smkey"></div></div>
+  <div id="smt" style="display:none;padding:6px 12px;background:#111;border-bottom:1px solid #333;display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <div style="flex:1;min-width:0"><div class="sml">accordage</div><div class="smv" id="smtun"></div></div>
+    <div style="width:1px;background:#333;align-self:stretch"></div>
+    <div style="flex:1;min-width:0"><div class="sml">tonalité</div><div class="smv" id="smkey"></div></div>
+    <div style="width:1px;background:#333;align-self:stretch"></div>
+    <div class="tz" id="tz" style="flex-shrink:0"><button class="tb" onclick="tr(-1)">−</button><span class="ti" id="td">0</span><button class="tb" onclick="tr(+1)">+</button></div>
+    <div style="width:1px;background:#333;align-self:stretch"></div>
+    <div id="alt-toggle" style="display:flex;border-radius:11px;overflow:hidden;flex-shrink:0;background:#e0e0e0;padding:2px;gap:2px">
+      <button id="alt-sharp" onclick="apAltDirect('sharp')" style="padding:0 9px;height:30px;font-size:13px;font-weight:800;border-radius:9px 0 0 9px;border-right:1px solid #ddd;min-width:30px">♯</button>
+      <button id="alt-flat" onclick="apAltDirect('flat')" style="padding:0 9px;height:30px;font-size:13px;font-weight:800;border-radius:0 9px 9px 0;min-width:30px">♭</button>
+    </div>
   </div>
   <div class="sbody" id="sb"></div>
   <button id="view-toggle" onclick="toggleView()" style="display:none;position:absolute;bottom:max(env(safe-area-inset-bottom,0px),90px);right:16px;padding:13px 20px;border-radius:14px;background:#e67e22!important;color:#fff!important;font-size:15px;font-weight:700;align-items:center;gap:6px;z-index:50;box-shadow:0 3px 12px rgba(0,0,0,.5)"></button>
@@ -565,8 +567,9 @@ function rSong(){
   document.getElementById('tz').style.display=(t==='chords'&&A.viewMode==='text'&&A.sd.secs.length>0)?'flex':'none';
   document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;
   const mt=document.getElementById('smt');
-  if(t==='chords'){mt.style.display='flex';document.getElementById('smtun').textContent=A.sd.tun||'—';document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';}
-  else mt.style.display='none';
+  mt.style.display='flex';
+  document.getElementById('smtun').textContent=A.sd.tun||'—';
+  document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';
   const body=document.getElementById('sb');body.innerHTML='';
   if(t==='chords'){
     if(A.viewMode==='image'){
