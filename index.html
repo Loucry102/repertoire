@@ -34,13 +34,13 @@ input::placeholder,textarea::placeholder{color:#aaa}
 .spin{width:40px;height:40px;border:3px solid #444;border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hdr{background:#161616;border-bottom:1px solid #333;padding:12px;padding-top:max(env(safe-area-inset-top,0px),12px);display:flex;align-items:center;gap:8px;flex-shrink:0;z-index:10}
-.shdr{background:#161616;border-bottom:1px solid #333;padding:8px 10px;padding-top:max(env(safe-area-inset-top,0px),8px);display:flex;align-items:center;gap:4px;flex-shrink:0;overflow:hidden;min-width:0;box-sizing:border-box}
+.shdr{background:#161616;border-bottom:1px solid #333;padding:6px 8px;padding-top:max(env(safe-area-inset-top,0px),6px);display:flex;align-items:center;gap:3px;flex-shrink:0;overflow:hidden;min-width:0;box-sizing:border-box}
 .ht{font-size:16px;font-weight:700;color:#fff;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bk{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;min-width:46px;color:#111}
+.bk{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;min-width:38px;color:#111}
 .hdr .bk,.shdr .bk,.hdr .ib,.shdr .ib{color:#fff}
 .bk svg,.ib svg{stroke:currentColor;fill:none}
 .bk svg{width:20px;height:20px;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.ib{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;color:#111}
+.ib{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;color:#111}
 .ib svg{width:17px;height:17px;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .ib.ed{background:#e74c3c!important;color:#fff}
 #sl{align-items:center;justify-content:center;gap:18px;padding:2rem 1.5rem;overflow-y:auto;background:#fff}
@@ -76,10 +76,10 @@ input::placeholder,textarea::placeholder{color:#aaa}
 .di.danger{color:#e74c3c!important}
 .ds{height:1px;background:#eee}
 .ttog{display:flex;border-radius:10px;overflow:hidden;flex-shrink:0;background:#333}
-.ttb{padding:9px 14px;font-size:14px;font-weight:700;border-radius:0;background:#333!important;color:#aaa!important}
+.ttb{padding:7px 10px;font-size:13px;font-weight:700;border-radius:0;background:#333!important;color:#aaa!important}
 .ttb.on{background:#fff!important;color:#111!important}
 .tz{display:flex;align-items:center;gap:4px;flex-shrink:0}
-.tb{width:34px;height:34px;border-radius:9px;font-size:19px;display:flex;align-items:center;justify-content:center;padding:0}
+.tb{width:30px;height:30px;border-radius:8px;font-size:18px;display:flex;align-items:center;justify-content:center;padding:0}
 .ti{font-size:12px;color:#aaa;min-width:22px;text-align:center}
 .stbar{padding:14px 16px 8px;background:#161616;border-bottom:1px solid #333;flex-shrink:0}
 .stfull{font-size:21px;font-weight:700;color:#fff;line-height:1.3;word-break:break-word}
@@ -245,10 +245,9 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
     <div class="ttog"><button class="ttb" id="tc" onclick="sTab('chords')">grilles</button><button class="ttb" id="tl" onclick="sTab('lyrics')">paroles</button></div>
     <div class="tz" id="tz"><button class="tb" onclick="tr(-1)">−</button><span class="ti" id="td">0</span><button class="tb" onclick="tr(+1)">+</button></div>
     <button class="ib" id="eb" onclick="startEdit()"><svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-    <div style="flex:1"></div>
     <div id="alt-toggle" style="display:flex;border-radius:11px;overflow:hidden;flex-shrink:0;background:#e0e0e0;margin-left:auto;padding:2px;gap:2px">
-      <button id="alt-sharp" onclick="apAltDirect('sharp')" style="padding:0 12px;height:36px;font-size:15px;font-weight:800;border-radius:9px 0 0 9px;border-right:1px solid #ddd;min-width:40px">♯</button>
-      <button id="alt-flat" onclick="apAltDirect('flat')" style="padding:0 12px;height:36px;font-size:15px;font-weight:800;border-radius:0 9px 9px 0;min-width:40px">♭</button>
+      <button id="alt-sharp" onclick="apAltDirect('sharp')" style="padding:0 9px;height:34px;font-size:14px;font-weight:800;border-radius:9px 0 0 9px;border-right:1px solid #ddd;min-width:34px">♯</button>
+      <button id="alt-flat" onclick="apAltDirect('flat')" style="padding:0 9px;height:34px;font-size:14px;font-weight:800;border-radius:0 9px 9px 0;min-width:34px">♭</button>
     </div>
   </div>
   <div class="stbar">
