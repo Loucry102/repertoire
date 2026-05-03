@@ -280,6 +280,11 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 </div>
 <div id="sf" class="scr">
   <button class="ibk ui-fade" id="sf-back" onclick="go('ss')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+  <div class="ui-fade" id="sf-title" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);border-radius:14px;padding:10px 22px;font-size:22px;font-weight:800;color:#fff;z-index:100;white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.06em;box-shadow:0 2px 12px rgba(0,0,0,.5);display:none"></div>
+  <div class="ui-fade" id="sf-slnav" style="position:fixed;top:max(env(safe-area-inset-top,0px),12px);right:16px;display:none;gap:8px;z-index:100">
+    <button onclick="slPrev()" style="width:42px;height:42px;border-radius:12px;background:rgba(30,30,30,.85);color:#fff;font-size:20px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center" id="sf-prev">←</button>
+    <button onclick="slNext()" style="width:42px;height:42px;border-radius:12px;background:rgba(30,30,30,.85);color:#fff;font-size:20px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center" id="sf-next">→</button>
+  </div>
   <div class="ifw" id="ifw" onclick="showUI()"></div>
   <div class="ui-fade" id="sf-zbar" style="position:fixed;bottom:max(env(safe-area-inset-bottom,0px),16px);left:16px;display:flex;align-items:center;background:rgba(30,30,30,.85);border-radius:14px;padding:7px 12px;gap:6px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.5)">
     <button class="zb" onclick="zmImg(-1)">−</button>
@@ -290,6 +295,11 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 </div>
 <div id="sfs" class="scr">
   <button class="ibk ui-fade" id="sfs-back" onclick="exitFs()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+  <div class="ui-fade" id="sfs-title" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);border-radius:14px;padding:10px 22px;font-size:22px;font-weight:800;color:#fff;z-index:100;white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.06em;box-shadow:0 2px 12px rgba(0,0,0,.5);pointer-events:none"></div>
+  <div class="ui-fade" id="sfs-slnav" style="position:fixed;top:max(env(safe-area-inset-top,0px),12px);right:16px;display:none;gap:8px;z-index:100">
+    <button onclick="slPrev()" id="sfs-prev" style="width:46px;height:46px;border-radius:12px;background:rgba(128,128,128,.5)!important;color:#fff!important;font-size:22px;border:2px solid rgba(255,255,255,.3)!important;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);backdrop-filter:blur(4px)">←</button>
+    <button onclick="slNext()" id="sfs-next" style="width:46px;height:46px;border-radius:12px;background:rgba(128,128,128,.5)!important;color:#fff!important;font-size:22px;border:2px solid rgba(255,255,255,.3)!important;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);backdrop-filter:blur(4px)">→</button>
+  </div>
   <div class="fsbody" id="fscontent" onclick="showUI()"></div>
   <div class="zbar ui-fade" id="sfs-zbar" style="display:flex">
     <button class="zb" onclick="zmFs(-1)">−</button>
@@ -631,7 +641,26 @@ function openImgFs(startIdx){
 }
 function updateSfNav(){}
 let _uiT=null;
-function showUI(){document.querySelectorAll('.ui-fade').forEach(el=>el.classList.remove('hidden'));clearTimeout(_uiT);_uiT=setTimeout(()=>document.querySelectorAll('.ui-fade').forEach(el=>el.classList.add('hidden')),2500);}
+function showUI(){
+  ['sf','sfs'].forEach(prefix=>{
+    const t=document.getElementById(prefix+'-title');
+    const n=document.getElementById(prefix+'-slnav');
+    if(t){t.textContent=(A.key||'').toUpperCase();t.style.display=A.key?'block':'none';}
+    if(n){
+      n.style.display=A.slMode?'flex':'none';
+      if(A.slMode){
+        const sl=DB.sl?.[A.slCtx.grp]?.[A.slCtx.id];
+        const prev=document.getElementById(prefix+'-prev');
+        const next=document.getElementById(prefix+'-next');
+        if(prev)prev.style.opacity=A.slCtx.idx===0?'0.3':'1';
+        if(next)next.style.opacity=sl&&A.slCtx.idx>=(sl.morceaux||[]).length-1?'0.3':'1';
+      }
+    }
+  });
+  document.querySelectorAll('.ui-fade').forEach(el=>el.classList.remove('hidden'));
+  clearTimeout(_uiT);
+  _uiT=setTimeout(()=>document.querySelectorAll('.ui-fade').forEach(el=>el.classList.add('hidden')),2500);
+}
 document.addEventListener('click',()=>{if(document.getElementById('sf')?.classList.contains('on')||document.getElementById('sfs')?.classList.contains('on'))showUI();});
 function sTab(t){A.tab=t;A.semi=0;rSong();}
 function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords'){const _cs=getCurSecs();document.querySelectorAll('.sc').forEach((el,i)=>{if(_cs[i])el.textContent=trTxt(nrm(_cs[i].c||'',A.alt),A.semi);});}}
@@ -1282,14 +1311,33 @@ function openSlPicker(grp,idx){
 }
 
 // Boutons ← → dans le morceau en mode setlist
-function slPrev(){
+function slNav(dir){
   const sl=DB.sl[A.slCtx.grp][A.slCtx.id];
-  if(A.slCtx.idx>0){A.slCtx.idx--;oSong(sl.morceaux[A.slCtx.idx]);}
+  const newIdx=A.slCtx.idx+dir;
+  if(newIdx<0||newIdx>=(sl.morceaux||[]).length)return;
+  const wasSfs=document.getElementById('sfs')?.style.display==='flex';
+  const wasSf=document.getElementById('sf')?.style.display==='flex';
+  A.slCtx.idx=newIdx;
+  const nm=sl.morceaux[newIdx];
+  // Charger le morceau sans changer d'écran
+  A.key=nm;A.semi=0;
+  const s=DB.s?.[A.grp]?.[nm]||{};
+  const _sg=s.sg?JSON.parse(JSON.stringify(s.sg)):s.sc?JSON.parse(JSON.stringify(s.sc)):[];
+  const _sb=s.sb?JSON.parse(JSON.stringify(s.sb)):[];
+  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
+  if(A.ins==='bass')A.instMode=_sb.length>0?'bass':(_sg.length>0?'guitar':'bass');
+  else A.instMode=_sg.length>0?'guitar':(_sb.length>0?'bass':'guitar');
+  A.viewMode=(_sg.length>0||_sb.length>0)?'text':'image';
+  document.getElementById('stf').textContent=nm;
+  // Rester en plein écran et recharger le contenu
+  if(wasSfs){openFs(A.fsType||'chords');}
+  else if(wasSf){openImgFs(0);}
+  else{oSong(nm);}
+  // Mettre à jour les boutons de nav
+  showUI();
 }
-function slNext(){
-  const sl=DB.sl[A.slCtx.grp][A.slCtx.id];
-  if(A.slCtx.idx<sl.morceaux.length-1){A.slCtx.idx++;oSong(sl.morceaux[A.slCtx.idx]);}
-}
+function slPrev(){slNav(-1);}
+function slNext(){slNav(1);}
 function exitSl(){
   A.slMode=false;
   goSlDetail(A.slCtx.grp,A.slCtx.id);
