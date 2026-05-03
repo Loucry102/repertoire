@@ -111,8 +111,8 @@ input::placeholder,textarea::placeholder{color:#aaa}
 #sf{background:#000;justify-content:center;align-items:center}
 .ifw{width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:10px;gap:10px}
 .ifw img{display:block;border-radius:8px;cursor:default}
-.ibk{position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:16px;z-index:10;width:48px;height:48px;border-radius:14px;background:rgba(30,30,30,.85)!important;display:flex;align-items:center;justify-content:center;color:#fff}
-.ibk svg{stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;width:22px;height:22px}
+.ibk{position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:16px;z-index:100;width:38px;height:38px;border-radius:9px;background:#fff!important;color:#111!important;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 2px 16px rgba(0,0,0,.5)}
+.ibk svg{stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;width:22px;height:22px}
 #sfs{background:var(--cw-bg,#fff)}
 .fsbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;padding-top:max(env(safe-area-inset-top,0px),70px);padding-bottom:90px}
 .mov{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;box-sizing:border-box}
@@ -158,8 +158,8 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 
 .kb-bar.on{display:flex}
 .scr-flex{display:flex;flex-direction:column;height:100%}
-.alt-active{background:#fff!important;color:#111!important;box-shadow:inset 0 0 0 2.5px #111}
-.alt-inactive{background:#fff!important;color:#bbb!important}
+.alt-active{background:#fff!important;color:#111!important;border-radius:9px!important;outline:2.5px solid #111;outline-offset:-1px}
+.alt-inactive{background:transparent!important;color:#888!important}
 .btn-guitar{background:#27ae60!important;color:#fff!important}
 .btn-bass{background:#9b59b6!important;color:#fff!important}
 .btn-add-inst{background:#27ae60!important;color:#fff!important}
@@ -246,9 +246,9 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
     <div class="tz" id="tz"><button class="tb" onclick="tr(-1)">−</button><span class="ti" id="td">0</span><button class="tb" onclick="tr(+1)">+</button></div>
     <button class="ib" id="eb" onclick="startEdit()"><svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
     <div style="flex:1"></div>
-    <div id="alt-toggle" style="display:flex;border-radius:11px;overflow:hidden;flex-shrink:0;border:2px solid #333;margin-left:auto">
-      <button id="alt-sharp" onclick="apAltDirect('sharp')" style="padding:0 12px;height:38px;font-size:15px;font-weight:800;border-radius:0;border-right:1px solid #ddd;min-width:40px">♯</button>
-      <button id="alt-flat" onclick="apAltDirect('flat')" style="padding:0 12px;height:38px;font-size:15px;font-weight:800;border-radius:0;min-width:40px">♭</button>
+    <div id="alt-toggle" style="display:flex;border-radius:11px;overflow:hidden;flex-shrink:0;background:#e0e0e0;margin-left:auto;padding:2px;gap:2px">
+      <button id="alt-sharp" onclick="apAltDirect('sharp')" style="padding:0 12px;height:36px;font-size:15px;font-weight:800;border-radius:9px 0 0 9px;border-right:1px solid #ddd;min-width:40px">♯</button>
+      <button id="alt-flat" onclick="apAltDirect('flat')" style="padding:0 12px;height:36px;font-size:15px;font-weight:800;border-radius:0 9px 9px 0;min-width:40px">♭</button>
     </div>
   </div>
   <div class="stbar">
@@ -279,9 +279,9 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
   <div class="etb"><button class="cn" onclick="cancelEdit()">annuler</button><button class="sv" onclick="saveEdit()">✓ enregistrer</button></div>
 </div>
 <div id="sf" class="scr">
-  <button class="ibk ui-fade" id="sf-back" onclick="go('ss')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+  <div class="ui-fade" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:16px;background:#222;border-radius:14px;padding:7px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.5)"><button id="sf-back" onclick="go('ss')" style="width:38px;height:38px;border-radius:9px;background:#fff!important;color:#111!important;display:flex;align-items:center;justify-content:center;padding:0;border:none"><svg viewBox="0 0 24 24" style="stroke:#111;fill:none;stroke-width:2.5;stroke-linecap:round;width:22px;height:22px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
   <div class="ui-fade" id="sf-title" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);border-radius:14px;padding:10px 22px;font-size:22px;font-weight:800;color:#fff;z-index:100;white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.06em;box-shadow:0 2px 12px rgba(0,0,0,.5);display:none"></div>
-  <div class="ui-fade" id="sf-slnav" style="position:fixed;top:max(env(safe-area-inset-top,0px),12px);right:16px;display:none;gap:8px;z-index:100">
+  <div class="ui-fade" id="sf-slnav" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);right:16px;display:none;align-items:center;gap:6px;background:#222;border-radius:14px;padding:7px 12px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.5)">
     <button onclick="slPrev()" style="width:42px;height:42px;border-radius:12px;background:rgba(30,30,30,.85);color:#fff;font-size:20px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center" id="sf-prev">←</button>
     <button onclick="slNext()" style="width:42px;height:42px;border-radius:12px;background:rgba(30,30,30,.85);color:#fff;font-size:20px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center" id="sf-next">→</button>
   </div>
@@ -294,11 +294,11 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 
 </div>
 <div id="sfs" class="scr">
-  <button class="ibk ui-fade" id="sfs-back" onclick="exitFs()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+  <div class="ui-fade" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:16px;background:#222;border-radius:14px;padding:7px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.5)"><button id="sfs-back" onclick="exitFs()" style="width:38px;height:38px;border-radius:9px;background:#fff!important;color:#111!important;display:flex;align-items:center;justify-content:center;padding:0;border:none"><svg viewBox="0 0 24 24" style="stroke:#111;fill:none;stroke-width:2.5;stroke-linecap:round;width:22px;height:22px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
   <div class="ui-fade" id="sfs-title" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);border-radius:14px;padding:10px 22px;font-size:22px;font-weight:800;color:#fff;z-index:100;white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.06em;box-shadow:0 2px 12px rgba(0,0,0,.5);pointer-events:none"></div>
-  <div class="ui-fade" id="sfs-slnav" style="position:fixed;top:max(env(safe-area-inset-top,0px),12px);right:16px;display:none;gap:8px;z-index:100">
-    <button onclick="slPrev()" id="sfs-prev" style="width:46px;height:46px;border-radius:12px;background:rgba(128,128,128,.5)!important;color:#fff!important;font-size:22px;border:2px solid rgba(255,255,255,.3)!important;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);backdrop-filter:blur(4px)">←</button>
-    <button onclick="slNext()" id="sfs-next" style="width:46px;height:46px;border-radius:12px;background:rgba(128,128,128,.5)!important;color:#fff!important;font-size:22px;border:2px solid rgba(255,255,255,.3)!important;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);backdrop-filter:blur(4px)">→</button>
+  <div class="ui-fade" id="sfs-slnav" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);right:16px;display:none;align-items:center;gap:6px;background:#222;border-radius:14px;padding:7px 12px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.5)">
+    <button onclick="slPrev()" id="sfs-prev" style="width:38px;height:38px;border-radius:9px;background:#fff!important;color:#111!important;font-size:22px;border:none!important;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">←</button>
+    <button onclick="slNext()" id="sfs-next" style="width:38px;height:38px;border-radius:9px;background:#fff!important;color:#111!important;font-size:22px;border:none!important;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">→</button>
   </div>
   <div class="fsbody" id="fscontent" onclick="showUI()"></div>
   <div class="zbar ui-fade" id="sfs-zbar" style="display:flex">
