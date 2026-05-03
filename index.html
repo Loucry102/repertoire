@@ -1350,6 +1350,14 @@ function slNav(dir){
       go('ss');
     }
   }
+  // Mettre à jour l'opacité des boutons ← → en mode normal
+  if(!wasFs){
+    const _sl2=DB.sl?.[A.slCtx.grp]?.[A.slCtx.id];
+    const _prev2=document.getElementById('sl-prev');
+    const _next2=document.getElementById('sl-next');
+    if(_prev2)_prev2.style.opacity=A.slCtx.idx===0?'0.3':'1';
+    if(_next2)_next2.style.opacity=_sl2&&A.slCtx.idx>=(_sl2.morceaux||[]).length-1?'0.3':'1';
+  }
   showUI();
 }
 function slPrev(){slNav(-1);}
