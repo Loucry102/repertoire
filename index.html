@@ -1319,9 +1319,10 @@ function slNav(dir){
   if(newIdx<0||newIdx>=(sl.morceaux||[]).length)return;
   const wasSfs=document.getElementById('sfs')?.style.display==='flex';
   const wasSf=document.getElementById('sf')?.style.display==='flex';
+  const wasFs=wasSfs||wasSf;
   A.slCtx.idx=newIdx;
   const nm=sl.morceaux[newIdx];
-  // Charger le morceau sans changer d'écran
+  // Charger toutes les données du morceau
   A.key=nm;A.semi=0;
   const s=DB.s?.[A.grp]?.[nm]||{};
   const _sg=s.sg?JSON.parse(JSON.stringify(s.sg)):s.sc?JSON.parse(JSON.stringify(s.sc)):[];
@@ -1329,13 +1330,26 @@ function slNav(dir){
   A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
   if(A.ins==='bass')A.instMode=_sb.length>0?'bass':(_sg.length>0?'guitar':'bass');
   else A.instMode=_sg.length>0?'guitar':(_sb.length>0?'bass':'guitar');
-  A.viewMode=(_sg.length>0||_sb.length>0)?'text':'image';
+  // Déterminer le viewMode selon ce qui est disponible
+  const hasGrid=_sg.length>0||_sb.length>0;
+  const hasImg=A.sd.imgs.length>0;
+  A.viewMode=hasGrid?'text':'image';
+  // Mettre à jour l'écran ss (titre, badges, métadonnées) — toujours
   document.getElementById('stf').textContent=nm;
-  // Rester en plein écran et recharger le contenu
-  if(wasSfs){openFs(A.fsType||'chords');}
-  else if(wasSf){openImgFs(0);}
-  else{oSong(nm);}
-  // Mettre à jour les boutons de nav
+  rSong(); // met à jour ss complètement
+  if(wasFs){
+    // Décider quel écran plein écran ouvrir
+    if(wasSfs&&hasGrid){
+      openFs(A.fsType==='lyrics'?'lyrics':'chords');
+    }else if(hasImg){
+      openImgFs(0);
+    }else if(hasGrid){
+      openFs('chords');
+    }else{
+      // Rien disponible → rester sur ss
+      go('ss');
+    }
+  }
   showUI();
 }
 function slPrev(){slNav(-1);}
