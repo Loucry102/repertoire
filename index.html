@@ -1357,16 +1357,30 @@ function slNav(dir){
   document.getElementById('stf').textContent=nm;
   rSong(); // met à jour ss complètement
   if(wasFs){
+    // Déterminer le mode préféré selon le rôle
+    const prefersLyrics=A.ins==='lyrics';
     // Décider quel écran plein écran ouvrir
-    if(wasSfs&&hasGrid){
-      openFs(A.fsType==='lyrics'?'lyrics':'chords');
-    }else if(hasImg){
-      openImgFs(0);
-    }else if(hasGrid){
-      openFs('chords');
-    }else{
-      // Rien disponible → rester sur ss
-      go('ss');
+    if(wasSfs||prefersLyrics){
+      // On était en plein écran texte OU on est chanteur
+      if(prefersLyrics&&A.sd.lyr){
+        // Chanteur : paroles en priorité si disponibles
+        openFs('lyrics');
+      }else if(hasGrid){
+        openFs(A.fsType==='lyrics'?'lyrics':'chords');
+      }else if(hasImg){
+        openImgFs(0);
+      }else{
+        go('ss');
+      }
+    }else if(wasSf){
+      // On était en plein écran image
+      if(hasImg){
+        openImgFs(0);
+      }else if(hasGrid){
+        openFs('chords');
+      }else{
+        go('ss');
+      }
     }
   }
   // Mettre à jour l'opacité des boutons ← → en mode normal
