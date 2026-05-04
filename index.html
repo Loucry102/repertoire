@@ -774,36 +774,24 @@ function _updateKbPos(){
   if(!window.visualViewport)return;
   const vv=window.visualViewport;
   const kbHeight=Math.max(0,window.innerHeight-(vv.height+vv.offsetTop));
-  const active=document.activeElement;
-  const tag=active?.tagName;
-  // Décaler la modale vers le haut
+  // Décaler la modale vers le haut pour qu'elle reste visible
   const mov=document.querySelector('.mov');
-  if(mov){
-    if(kbHeight>50){
-      // Centrer la modale dans l'espace visible au-dessus du clavier
-      const visibleH=window.innerHeight-kbHeight;
-      const msh=mov.querySelector('.msh');
-      const mshH=msh?msh.offsetHeight:300;
-      const offset=Math.max(0,((window.innerHeight-mshH)/2)-((visibleH-mshH)/2));
-      mov.style.transform='translateY(-'+Math.min(offset,kbHeight)+'px)';
-    }else{
-      mov.style.transform='';
-    }
-  }
-  // Scroller pour voir l'élément actif (input ou textarea)
-  if(kbHeight>50&&tag&&(tag==='TEXTAREA'||tag==='INPUT')){
-    const rect=active.getBoundingClientRect();
-    const visibleBottom=window.innerHeight-kbHeight-12;
-    if(rect.bottom>visibleBottom){
-      const scrollParent=active.closest('.sbody,.msh,.gb');
-      if(scrollParent)scrollParent.scrollTop+=rect.bottom-visibleBottom+12;
-    }
-  }
+  if(mov)mov.style.transform=kbHeight>50?'translateY(-'+Math.round(kbHeight/2)+'px)':'';
 }
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize',_updateKbPos);
   window.visualViewport.addEventListener('scroll',_updateKbPos);
 }
+// Scroll universel : quand n'importe quel input/textarea reçoit le focus
+// on attend que le clavier soit ouvert puis on scrolle vers l'élément
+document.addEventListener('focus',e=>{
+  const el=e.target;
+  if(el.tagName!=='INPUT'&&el.tagName!=='TEXTAREA')return;
+  // Attendre que le clavier soit complètement ouvert (~400ms sur iOS)
+  setTimeout(()=>{
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+  },400);
+},true);
 function _shouldCloseKb(target){
   const kbb=document.getElementById('kbb');
   if(kbb&&kbb.contains(target))return false;
