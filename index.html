@@ -773,14 +773,22 @@ function dMem(u){delete DB.u[u];sDB();cM();openAdmin();}
 function _updateKbPos(){
   if(!window.visualViewport)return;
   const vv=window.visualViewport;
-  const kbb=document.getElementById('kbb');
   const kbHeight=Math.max(0,window.innerHeight-(vv.height+vv.offsetTop));
-  if(kbb&&kbb.classList.contains('on')){
-    kbb.style.bottom=kbHeight+'px';
-  }
-  // Modal
+  // Modal — pousser vers le haut quand le clavier réel s'ouvre
   const mov=document.querySelector('.mov');
-  if(mov)mov.style.transform=kbHeight>100?'translateY(-'+Math.min(kbHeight,window.innerHeight*0.35)+'px)':'';
+  if(mov)mov.style.transform=kbHeight>100?'translateY(-'+Math.min(kbHeight,window.innerHeight*0.4)+'px)':'';
+  // Scroller pour voir le textarea actif avec le clavier réel
+  if(kbHeight>100&&document.activeElement&&document.activeElement.tagName==='TEXTAREA'){
+    const ta=document.activeElement;
+    const rect=ta.getBoundingClientRect();
+    const visibleBottom=window.innerHeight-kbHeight-8;
+    if(rect.bottom>visibleBottom){
+      const scrollParent=ta.closest('.sbody,.msh,.gb');
+      if(scrollParent){
+        scrollParent.scrollTop+=rect.bottom-visibleBottom+8;
+      }
+    }
+  }
 }
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize',_updateKbPos);
@@ -1047,6 +1055,20 @@ function kbShow(ta){
   const b=document.getElementById('kbb');
   if(!b)return;
   b.style.cssText='display:flex;flex-direction:column;position:fixed;bottom:0;left:0;right:0;background:#111;border-top:2px solid #333;z-index:9999';
+  // Scroller pour voir le textarea au-dessus du clavier virtuel
+  setTimeout(()=>{
+    const kbH=b.offsetHeight||226;
+    const rect=ta.getBoundingClientRect();
+    const visibleBottom=window.innerHeight-kbH-8;
+    if(rect.bottom>visibleBottom){
+      // Le textarea est caché sous le clavier — scroller le parent
+      const scrollParent=ta.closest('.sbody,.msh,.gb');
+      if(scrollParent){
+        const extra=rect.bottom-visibleBottom+8;
+        scrollParent.scrollTop+=extra;
+      }
+    }
+  },100);
 }
 let _kbHideTimer=null;
 function kbHide(){
