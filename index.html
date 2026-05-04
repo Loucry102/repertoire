@@ -774,19 +774,29 @@ function _updateKbPos(){
   if(!window.visualViewport)return;
   const vv=window.visualViewport;
   const kbHeight=Math.max(0,window.innerHeight-(vv.height+vv.offsetTop));
-  // Modal — pousser vers le haut quand le clavier réel s'ouvre
+  const active=document.activeElement;
+  const tag=active?.tagName;
+  // Décaler la modale vers le haut
   const mov=document.querySelector('.mov');
-  if(mov)mov.style.transform=kbHeight>100?'translateY(-'+Math.min(kbHeight,window.innerHeight*0.4)+'px)':'';
-  // Scroller pour voir le textarea actif avec le clavier réel
-  if(kbHeight>100&&document.activeElement&&document.activeElement.tagName==='TEXTAREA'){
-    const ta=document.activeElement;
-    const rect=ta.getBoundingClientRect();
-    const visibleBottom=window.innerHeight-kbHeight-8;
+  if(mov){
+    if(kbHeight>50){
+      // Centrer la modale dans l'espace visible au-dessus du clavier
+      const visibleH=window.innerHeight-kbHeight;
+      const msh=mov.querySelector('.msh');
+      const mshH=msh?msh.offsetHeight:300;
+      const offset=Math.max(0,((window.innerHeight-mshH)/2)-((visibleH-mshH)/2));
+      mov.style.transform='translateY(-'+Math.min(offset,kbHeight)+'px)';
+    }else{
+      mov.style.transform='';
+    }
+  }
+  // Scroller pour voir l'élément actif (input ou textarea)
+  if(kbHeight>50&&tag&&(tag==='TEXTAREA'||tag==='INPUT')){
+    const rect=active.getBoundingClientRect();
+    const visibleBottom=window.innerHeight-kbHeight-12;
     if(rect.bottom>visibleBottom){
-      const scrollParent=ta.closest('.sbody,.msh,.gb');
-      if(scrollParent){
-        scrollParent.scrollTop+=rect.bottom-visibleBottom+8;
-      }
+      const scrollParent=active.closest('.sbody,.msh,.gb');
+      if(scrollParent)scrollParent.scrollTop+=rect.bottom-visibleBottom+12;
     }
   }
 }
