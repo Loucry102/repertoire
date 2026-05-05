@@ -161,6 +161,9 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 .alt-active{background:#fff!important;color:#111!important;border-radius:9px!important;outline:2.5px solid #111;outline-offset:-1px}
 .alt-inactive{background:transparent!important;color:#888!important}
 .btn-guitar{background:#27ae60!important;color:#fff!important}
+.ly-word{display:inline-block;position:relative;margin:0 2px 18px}
+.ly-chord{position:absolute;top:-20px;left:0;color:#e67e22;font-weight:700;font-size:.75em;font-family:monospace;white-space:nowrap}
+.ly-block{display:block;color:#e67e22;font-weight:700;font-style:italic;margin:12px 0 6px;font-size:.85em}
 .btn-bass{background:#9b59b6!important;color:#fff!important}
 .btn-add-inst{background:#27ae60!important;color:#fff!important}
 </style><script>
@@ -267,6 +270,13 @@ if('serviceWorker' in navigator){
       <button id="alt-sharp" onclick="apAltDirect('sharp')" style="padding:0 9px;height:30px;font-size:13px;font-weight:800;border-radius:9px 0 0 9px;border-right:1px solid #ddd;min-width:30px">♯</button>
       <button id="alt-flat" onclick="apAltDirect('flat')" style="padding:0 9px;height:30px;font-size:13px;font-weight:800;border-radius:0 9px 9px 0;min-width:30px">♭</button>
     </div>
+    <div id="lya-smt-sep" style="width:1px;background:#333;align-self:stretch;display:none"></div>
+    <div id="lya-smt-tz" class="tz" style="flex-shrink:0;display:none">
+      <button class="tb" onclick="trLyA(-1)">−</button>
+      <span class="ti" id="lya-ss-td">0</span>
+      <button class="tb" onclick="trLyA(+1)">+</button>
+    </div>
+
   </div>
   <div class="sbody" id="sb"></div>
   <button id="view-toggle" onclick="toggleView()" style="display:none;position:absolute;bottom:max(env(safe-area-inset-bottom,0px),90px);right:16px;padding:13px 20px;border-radius:14px;background:#e67e22!important;color:#fff!important;font-size:15px;font-weight:700;align-items:center;gap:6px;z-index:50;box-shadow:0 3px 12px rgba(0,0,0,.5)"></button>
@@ -314,6 +324,34 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 <div id="ssl" class="scr"></div>
+<div id="slya" class="scr" style="flex-direction:column">
+  <div class="shdr" id="lya-hdr">
+    <button class="ib" id="lya-cancel" onclick="lyaCancel()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="ht">Accords au-dessus des paroles</div>
+    <button class="ib" style="background:#27ae60!important;color:#fff!important;padding:0 14px;font-size:13px;font-weight:700;width:auto;border-radius:10px" onclick="lyaSave()">Enregistrer</button>
+  </div>
+  <div id="lya-transpo-bar" style="display:none;padding:6px 12px;background:#111;border-bottom:1px solid #333;align-items:center;gap:10px;flex-shrink:0">
+    <div class="tz" style="flex-shrink:0"><button class="tb" onclick="trLyA(-1)">−</button><span class="ti" id="lya-td">0</span><button class="tb" onclick="trLyA(+1)">+</button></div>
+    <div style="width:1px;background:#333;align-self:stretch"></div>
+    <div id="lya-alt-toggle" style="display:flex;border-radius:11px;overflow:hidden;flex-shrink:0;background:#e0e0e0;padding:2px;gap:2px">
+      <button id="lya-alt-sharp" onclick="apAltLya('sharp')" style="padding:0 9px;height:30px;font-size:13px;font-weight:800;border-radius:9px 0 0 9px;border-right:1px solid #ddd;min-width:30px">♯</button>
+      <button id="lya-alt-flat" onclick="apAltLya('flat')" style="padding:0 9px;height:30px;font-size:13px;font-weight:800;border-radius:0 9px 9px 0;min-width:30px">♭</button>
+    </div>
+    <span style="font-size:12px;color:#aaa;margin-left:4px">transpo accords</span>
+  </div>
+  <div id="lya-editor" style="flex:1;display:flex;flex-direction:column;overflow:hidden"></div>
+</div>
+<div id="slya-bloc" class="scr" style="flex-direction:column;background:#161616">
+  <div class="shdr">
+    <button class="ib" id="lyabloc-cancel" onclick="lyaBlocCancel()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="ht" id="lyabloc-title">Bloc</div>
+  </div>
+  <div style="padding:16px;flex-shrink:0">
+    <textarea id="lyabloc-ta" inputmode="none" style="width:100%;padding:14px;border-radius:12px;font-size:18px;font-weight:700;background:#252525;color:#fff;border:none;outline:none;resize:none;height:80px;box-sizing:border-box;font-family:inherit"></textarea>
+  </div>
+  <div id="lyabloc-actions" style="padding:0 16px 12px;display:flex;gap:8px;flex-shrink:0"></div>
+  <div style="flex:1"></div>
+</div>
 <div id="ssl2" class="scr"></div>
 <div id="ssl3" class="scr"></div>
 <div id="mr"></div>
@@ -367,9 +405,11 @@ async function uploadImg(file){
   if(!r.ok)throw new Error('upload');
   return(await r.json()).secure_url;
 }
-let A={ins:'chords',grp:'',key:'',tab:'chords',semi:0,viewMode:'text',instMode:'guitar',pins:'guitar',_clipboard:null,_edInst:'guitar',slMode:false,slCtx:{grp:'',id:'',idx:0},_slScroll:0,sd:{type:'text',secs:[],lyr:'',imgs:[],tun:'E',tkey:'',mode:'Majeur'},et:'chords',ed:{},edSemi:0,edTitle:'',lfs:44,cfs:44,imgScale:1,alt:'sharp',theme:'dark',usr:null,nc:'#e74c3c',ptun:'E',psecs:[],pimgs:[]};
-const LS={alt:u=>'alt_'+u,theme:u=>'theme_'+u,zoom:u=>'zoom_'+u,sess:'sc_s'};
+let A={ins:'chords',showLya:false,lyaSemi:0,lyaAlt:'sharp',grp:'',key:'',tab:'chords',semi:0,viewMode:'text',instMode:'guitar',pins:'guitar',_clipboard:null,_edInst:'guitar',slMode:false,slCtx:{grp:'',id:'',idx:0},_slScroll:0,sd:{type:'text',secs:[],lyr:'',imgs:[],tun:'E',tkey:'',mode:'Majeur'},et:'chords',ed:{},edSemi:0,edTitle:'',lfs:44,cfs:44,imgScale:1,alt:'sharp',theme:'dark',usr:null,nc:'#e74c3c',ptun:'E',psecs:[],pimgs:[]};
+const LS={alt:u=>'alt_'+u,theme:u=>'theme_'+u,zoom:u=>'zoom_'+u,lya:u=>'lya_'+u,sess:'sc_s'};
 function getAlt(){return A.usr?localStorage.getItem(LS.alt(A.usr.n))||'sharp':'sharp';}
+function getLya(){return A.usr?localStorage.getItem(LS.lya(A.usr.n))==='1':false;}
+function setLya(v){if(A.usr)localStorage.setItem(LS.lya(A.usr.n),v?'1':'0');A.showLya=!!v;}
 function setAlt(v){if(A.usr)localStorage.setItem(LS.alt(A.usr.n),v);A.alt=v;}
 function getTheme(){return A.usr?localStorage.getItem(LS.theme(A.usr.n))||'dark':'dark';}
 function setTheme(v){if(A.usr)localStorage.setItem(LS.theme(A.usr.n),v);A.theme=v;applyTheme();}
@@ -389,7 +429,7 @@ function go(id){
   if(id==='sf'||id==='sfs')showUI();
 }
 async function init(){go('sl0');try{await loadDB();}catch(e){try{const sv=localStorage.getItem(LS.sess);if(sv){const u=JSON.parse(sv);A.usr={n:u.n,role:u.role||'editor'};afterLogin();return;}}catch(e2){}go('sl');return;}try{const sv=localStorage.getItem(LS.sess);if(sv){const u=JSON.parse(sv);if(DB.u?.[u.n]){A.usr={n:u.n,role:DB.u[u.n].r||DB.u[u.n].role||'editor'};afterLogin();return;}}}catch(e){}go('sl');}
-function afterLogin(){document.getElementById('wn').textContent=A.usr.n;A.alt=getAlt();A.theme=getTheme();applyTheme();const z=getZoom();A.lfs=z.lfs;A.cfs=z.cfs;go('si');}
+function afterLogin(){document.getElementById('wn').textContent=A.usr.n;A.alt=getAlt();A.theme=getTheme();applyTheme();const z=getZoom();A.lfs=z.lfs;A.cfs=z.cfs;A.showLya=getLya();go('si');}
 function doLogin(){const u=document.getElementById('lu').value.trim(),p=document.getElementById('lp').value;document.getElementById('le').textContent='';if(!u||!p){document.getElementById('le').textContent='Remplissez tous les champs';return;}if(DB.u?.[u]?.h===p){A.usr={n:u,role:DB.u[u].r||DB.u[u].role||'editor'};try{localStorage.setItem(LS.sess,JSON.stringify(A.usr));}catch(e){}document.getElementById('lu').value='';document.getElementById('lp').value='';afterLogin();}else document.getElementById('le').textContent='Pseudo ou mot de passe incorrect';}
 function doLogout(){try{localStorage.removeItem(LS.sess);}catch(e){}A.usr=null;A.theme='dark';applyTheme();go('sl');}
 function chooseInstr(t){
@@ -513,7 +553,7 @@ function doPubImg(){const nm=(document.getElementById('pin')?.value||'').trim();
 function oSong(nm){A.key=nm;A.semi=0;const s=DB.s?.[A.grp]?.[nm]||{};
   const _sg=s.sg?JSON.parse(JSON.stringify(s.sg)):s.sc?JSON.parse(JSON.stringify(s.sc)):[];
   const _sb=s.sb?JSON.parse(JSON.stringify(s.sb)):[];
-  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
+  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',ly_a:s.ly_a?JSON.parse(JSON.stringify(s.ly_a)):null,imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
   // Priorité selon le rôle choisi, mais si la grille n'existe pas → l'autre
   if(A.ins==='bass') A.instMode=_sb.length>0?'bass':(_sg.length>0?'guitar':'bass');
   else A.instMode=_sg.length>0?'guitar':(_sb.length>0?'bass':'guitar');
@@ -584,11 +624,31 @@ function rSong(){
   document.getElementById('tc').className='ttb'+(t==='chords'?' on':'');
   document.getElementById('tl').className='ttb'+(t==='lyrics'?' on':'');
   document.getElementById('tz').style.display=(t==='chords'&&A.viewMode==='text'&&A.sd.secs.length>0)?'flex':'none';
+  // alt-toggle : visible sur grilles, visible sur paroles SEULEMENT si case cochée+accords
+  const _altTog=document.getElementById('alt-toggle');
+  if(_altTog){
+    if(t==='lyrics'){
+      _altTog.style.display=(A.showLya&&A.sd.ly_a&&A.sd.ly_a.length>0)?'flex':'none';
+    }else{
+      _altTog.style.display='flex';
+    }
+  }
+
   document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;
   const mt=document.getElementById('smt');
   mt.style.display='flex';
   document.getElementById('smtun').textContent=A.sd.tun||'—';
   document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';
+  // Afficher contrôles transpo lya dans smt si paroles+accords actifs
+  const showLyaControls=t==='lyrics'&&A.showLya&&A.sd.ly_a&&A.sd.ly_a.length>0;
+  ['lya-smt-sep','lya-smt-tz'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=showLyaControls?(id==='lya-smt-tz'?'flex':'block'):'none';
+  });
+  if(showLyaControls){
+    const td=document.getElementById('lya-ss-td');
+    if(td)td.textContent=(A.lyaSemi>0?'+':'')+A.lyaSemi;
+  }
   const body=document.getElementById('sb');body.innerHTML='';
   if(t==='chords'){
     if(A.viewMode==='image'){
@@ -607,9 +667,28 @@ function rSong(){
     }
   }else{
     const w=document.createElement('div');w.className='lw';w.style.cursor='pointer';
-    const p=document.createElement('div');p.className='lt';p.style.fontSize=A.lfs+'px';p.textContent=A.sd.lyr||'(aucune parole)';w.appendChild(p);
+    if(A.showLya&&A.sd.ly_a&&A.sd.ly_a.length>0){
+      // Afficher paroles+accords directement
+      renderLyA(w,A.sd.ly_a,A.lfs);
+      w.addEventListener('click',()=>openLyA());
+      // Afficher la barre transpo lya dans smt
+      _updateLyaSsAlt();
+    }else{
+      const p=document.createElement('div');p.className='lt';p.style.fontSize=A.lfs+'px';p.textContent=A.sd.lyr||'(aucune parole)';w.appendChild(p);
+      w.addEventListener('click',()=>openFs('lyrics'));
+    }
     w.appendChild(Object.assign(document.createElement('p'),{style:'font-size:12px;color:#aaa;margin-top:10px;text-align:center',textContent:'↑ Appuyer pour plein écran'}));
-    w.addEventListener('click',()=>openFs('lyrics'));body.appendChild(w);
+    body.appendChild(w);
+    // Boutons accords — fixe en bas à droite
+    const _lyaExist=A.sd.ly_a&&A.sd.ly_a.length>0;
+    const _lyaCanAdd=canEdit()&&A.sd.lyr&&A.sd.lyr.trim();
+    if(A.showLya&&canEdit()&&_lyaCanAdd){
+      const fabWrap=document.createElement('div');
+      fabWrap.style.cssText='position:fixed;bottom:max(env(safe-area-inset-bottom,0px),90px);right:80px;display:flex;flex-direction:column;gap:8px;z-index:50';
+      const editBtn=mk('button','padding:10px 16px;border-radius:14px;background:#333!important;color:#fff!important;font-size:13px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.5);white-space:nowrap',_lyaExist?'✏️ modifier accords':'+ accords',()=>openLyAEditorScreen());
+      fabWrap.appendChild(editBtn);
+      body.appendChild(fabWrap);
+    }
     document.getElementById('zbar').style.display='flex';
   }
 }
@@ -617,7 +696,13 @@ function openFs(type){
   const fc=document.getElementById('fscontent');fc.innerHTML='';
   const sbody=document.getElementById('sb');const ratio=sbody?(sbody.scrollTop/(sbody.scrollHeight-sbody.clientHeight||1)):0;
   if(type==='chords'){const w=document.createElement('div');w.className='cw';w.style.minHeight='100%';const fsSecs=getCurSecs();if(!fsSecs.length)w.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">Aucune grille</p>';else fsSecs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+trTxt(nrm(s.c||'',A.alt),A.semi)+'</div>';w.appendChild(d);});fc.appendChild(w);}
-  else{const w=document.createElement('div');w.className='lw';w.style.minHeight='100%';const p=document.createElement('div');p.className='lt';p.style.fontSize=A.lfs+'px';p.textContent=A.sd.lyr||'(aucune parole)';w.appendChild(p);fc.appendChild(w);}
+  else{
+    if(A.showLya&&A.sd.ly_a&&A.sd.ly_a.length>0){
+      // Rediriger vers openLyA
+      openLyA();return;
+    }
+    const w=document.createElement('div');w.className='lw';w.style.minHeight='100%';const p=document.createElement('div');p.className='lt';p.style.fontSize=A.lfs+'px';p.textContent=A.sd.lyr||'(aucune parole)';w.appendChild(p);fc.appendChild(w);
+  }
   A.fsType=type;go('sfs');requestAnimationFrame(()=>{const max=fc.scrollHeight-fc.clientHeight;fc.scrollTop=ratio*max;});
 }
 function exitFs(){go('ss');}
@@ -660,7 +745,6 @@ function openImgFs(startIdx){
     if(imgs2[startIdx])imgs2[startIdx].scrollIntoView();
   });
 }
-function updateSfNav(){}
 let _uiT=null;
 function showUI(){
   ['sf','sfs'].forEach(prefix=>{
@@ -686,7 +770,7 @@ document.addEventListener('click',()=>{if(document.getElementById('sf')?.classLi
 function sTab(t){A.tab=t;A.semi=0;rSong();}
 function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords'){const _cs=getCurSecs();document.querySelectorAll('.sc').forEach((el,i)=>{if(_cs[i])el.textContent=trTxt(nrm(_cs[i].c||'',A.alt),A.semi);});}}
 function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
-function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];A._edInst=A.instMode||'guitar';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
+function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.ly_a)A.ed.ly_a=A.sd.ly_a||null;if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];A._edInst=A.instMode||'guitar';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
   rES();go('se');setTimeout(attachAllGridShortcuts,50);}
 function sET(t){cEF();A.et=t;rES();setTimeout(attachAllGridShortcuts,50);}
 function cEF(){const body=document.getElementById('eb2');if(A.et==='lyrics'){const ta=body.querySelector('.ely');if(ta)A.ed.lyr=ta.value;}}
@@ -750,12 +834,42 @@ function doDelGrid(){
   cancelEdit();
 }
 function cancelEdit(){go('ss');}
-function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key)delete DB.s[A.grp][A.key];DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
-function openPrefs(){sM('<h3>Affichage</h3><label class="fl">Thème</label><p style="color:#999;font-size:13px;margin-bottom:8px">Affecte uniquement les boutons groupes et morceaux.</p><div class="sr"><button class="sbt'+(A.theme!=='dark'?' off':'')+'" id="ptd" onclick="apTheme(\'dark\')">🌙 Sombre</button><button class="sbt'+(A.theme!=='light'?' off':'')+'" id="ptl" onclick="apTheme(\'light\')">☀️ Clair</button></div><div class="ma"><button class="cc" onclick="cM()">fermer</button></div>');}
+function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,ly_a:A.ed.ly_a||null,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key)delete DB.s[A.grp][A.key];DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
+function openPrefs(){
+  const lyaChk=A.showLya;
+  const html='<h3>Affichage</h3>'
+    +'<label class="fl">Th\u00e8me</label>'
+    +'<p style="color:#999;font-size:13px;margin-bottom:8px">Affecte uniquement les boutons groupes et morceaux.</p>'
+    +'<div class="sr">'
+    +'<button class="sbt'+(A.theme!=='dark'?' off':'')+'" id="ptd" onclick="apTheme(\'dark\')">\uD83C\uDF19 Sombre</button>'
+    +'<button class="sbt'+(A.theme!=='light'?' off':'')+'" id="ptl" onclick="apTheme(\'light\')">\u2600\uFE0F Clair</button>'
+    +'</div>'
+    +'<label class="fl" style="margin-top:16px">Paroles</label>'
+    +'<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #eee">'
+    +'<div style="flex:1;font-size:15px;color:#111;font-weight:600">Afficher les accords avec les paroles</div>'
+    +'<div id="lya-toggle" onclick="apLya()" style="width:50px;height:28px;border-radius:14px;background:'+(lyaChk?'#e67e22':'#ccc')+';position:relative;cursor:pointer;flex-shrink:0;transition:background .2s">'
+    +'<div style="position:absolute;top:3px;left:'+(lyaChk?'25':'3')+'px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>'
+    +'</div></div>'
+    +'<div class="ma"><button class="cc" onclick="cM()">fermer</button></div>';
+  sM(html);
+}
+
+function apLya(){
+  setLya(!A.showLya);
+  // Mettre à jour le toggle visuellement
+  const tog=document.getElementById('lya-toggle');
+  if(tog){
+    tog.style.background=A.showLya?'#e67e22':'#ccc';
+    const dot=tog.firstChild;
+    if(dot)dot.style.left=A.showLya?'25px':'3px';
+  }
+}
 function apAlt(v){setAlt(v);const ps=document.getElementById('ps'),pf=document.getElementById('pf');if(ps)ps.className='sbt'+(v!=='sharp'?' off':'');if(pf)pf.className='sbt'+(v!=='flat'?' off':'');}
 function apAltDirect(v){
   setAlt(v);
+  A.lyaAlt=v; // Synchroniser avec les accords lya
   _updateAltToggle();
+  _updateLyaSsAlt();
   rSong();
 }
 function _updateAltToggle(){
@@ -795,7 +909,12 @@ document.addEventListener('focus',e=>{
 function _shouldCloseKb(target){
   const kbb=document.getElementById('kbb');
   if(kbb&&kbb.contains(target))return false;
-  // Input dans .esh (renommer section) → fermer pour laisser le vrai clavier
+  // Éléments dans la barre bloc (fenêtre d'édition fixe) → ne pas fermer kbb
+  const bar=document.querySelector('[data-blocbar]');
+  if(bar&&bar.contains(target))return false;
+  // Input avec data-realkb → laisser le clavier réel
+  if(target.dataset&&target.dataset.realkb)return true;
+  // Input dans .esh du bloc → laisser le clavier réel (titre du bloc)
   if(target.tagName==='INPUT'&&target.closest&&target.closest('.esh'))return true;
   // Textarea dans .esec → garder (c'est une section grille)
   if(target.tagName==='TEXTAREA'&&target.closest&&target.closest('.esec'))return false;
@@ -1416,7 +1535,7 @@ function slNav(dir){
   const s=DB.s?.[A.grp]?.[nm]||{};
   const _sg=s.sg?JSON.parse(JSON.stringify(s.sg)):s.sc?JSON.parse(JSON.stringify(s.sc)):[];
   const _sb=s.sb?JSON.parse(JSON.stringify(s.sb)):[];
-  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
+  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',ly_a:s.ly_a?JSON.parse(JSON.stringify(s.ly_a)):null,imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
   if(A.ins==='bass')A.instMode=_sb.length>0?'bass':(_sg.length>0?'guitar':'bass');
   else A.instMode=_sg.length>0?'guitar':(_sb.length>0?'bass':'guitar');
   // Déterminer le viewMode selon ce qui est disponible
@@ -1470,6 +1589,356 @@ function exitSl(){
   goSlDetail(A.slCtx.grp,A.slCtx.id);
 }
 
+// ══════════ ACCORDS AU-DESSUS DES PAROLES ══════════
+
+function openLyA(){
+  const fc=document.getElementById('fscontent');fc.innerHTML='';
+  const w=document.createElement('div');
+  w.style.cssText='min-height:100%;padding:16px;background:var(--cw-bg,#fff)';
+  renderLyA(w,A.sd.ly_a,A.lfs);
+  fc.appendChild(w);
+  A.fsType='lyrics';go('sfs');showUI();
+}
+
+function renderLyA(container,lya,fontSize){
+  container.innerHTML='';
+  const wrap=document.createElement('div');
+  wrap.style.cssText='font-size:'+(fontSize||A.lfs)+'px;line-height:3;word-break:break-word;color:var(--sc-txt,#111)';
+  (lya||[]).forEach(item=>{
+    if(item.type==='block'){
+      const bl=document.createElement('div');
+      bl.style.cssText='color:#e67e22;font-weight:700;font-style:italic;margin:36px 0 6px;font-size:.8em;display:block';
+      bl.textContent=item.text;
+      wrap.appendChild(bl);
+      if(item.grid&&item.grid.trim()){
+        const gr=document.createElement('div');
+        gr.style.cssText='font-family:monospace;font-weight:700;font-size:.9em;color:#e67e22;margin-bottom:36px;white-space:pre-wrap';
+        // Appliquer transpo et altération lya sur la grille du bloc
+        let gridTxt=nrm(item.grid,A.lyaAlt);
+        if(A.lyaSemi)gridTxt=trTxt(gridTxt,A.lyaSemi);
+        gr.textContent=gridTxt;
+        wrap.appendChild(gr);
+      }
+    }else if(item.newline){
+      if(item.chord){
+        // Accord entre deux phrases — même style qu'un mot normal
+        const nlWd=document.createElement('span');
+        nlWd.style.cssText='display:inline-block;position:relative;margin:0 2px 28px;padding:2px 4px';
+        const nlCh=document.createElement('span');
+        nlCh.style.cssText='position:absolute;top:-22px;left:0;color:#e67e22;font-weight:800;font-size:.7em;white-space:nowrap;letter-spacing:3px';
+        nlCh.textContent=lyaDispChord(item.chord);
+        nlWd.appendChild(nlCh);
+        nlWd.appendChild(document.createTextNode('  '));
+        wrap.appendChild(nlWd);
+      }
+      wrap.appendChild(document.createElement('br'));
+    }else{
+      const wd=document.createElement('span');
+      wd.style.cssText='display:inline-block;position:relative;margin:0 2px 28px;font-weight:700';
+      if(item.chord){
+        const ch=document.createElement('span');
+        ch.style.cssText='position:absolute;top:-22px;left:0;color:#e67e22;font-weight:800;font-size:.7em;white-space:nowrap';
+        ch.textContent=lyaDispChord(item.chord);
+        wd.appendChild(ch);
+      }
+      wd.appendChild(document.createTextNode(item.word||''));
+      wrap.appendChild(wd);
+      if(item.space)wrap.appendChild(document.createTextNode(' '));
+    }
+  });
+  container.appendChild(wrap);
+}
+
+function openLyAEditor(){
+  // Construire ly_a depuis les paroles si pas encore créé
+  if(!A.sd.ly_a||A.sd.ly_a.length===0){
+    A.sd.ly_a=parseLyricsToWords(A.sd.lyr||'');
+  }
+  A._lyaEditing=JSON.parse(JSON.stringify(A.sd.ly_a));
+  A._lyaIdx=0;
+  renderLyAEditor();
+}
+
+function parseLyricsToWords(lyr){
+  const result=[];
+  const nl=String.fromCharCode(10);
+  const lines=lyr.split(nl);
+  lines.forEach((line,li)=>{
+    const words=line.split(' ').filter(w=>w.length>0);
+    words.forEach((word,wi)=>{
+      result.push({type:'word',word,chord:null,space:wi<words.length-1});
+    });
+    if(li<lines.length-1)result.push({type:'word',word:'',chord:null,space:false,newline:true});
+  });
+  return result;
+}
+
+function renderLyAEditor(){
+  const lya=A._lyaEditing;
+  const idx=A._lyaIdx;
+  const body=document.getElementById('lya-editor');
+  if(!body)return;
+  body.innerHTML='';
+  // Supprimer toute barre de bloc fixe qui traînerait
+  document.querySelectorAll('[data-blocbar]').forEach(el=>el.remove());
+
+  const curItem=lya[idx];
+  const isBloc=!!(curItem&&curItem.type==='block');
+
+  // ── Zone aperçu ──
+  const preview=document.createElement('div');
+  preview.id='lya-preview';
+  preview.style.cssText='flex:1;overflow-y:auto;padding:20px 16px '+(isBloc?'460':'120')+'px;font-size:20px;line-height:3.2;word-break:break-word;font-family:monospace;background:var(--cw-bg,#fff);color:var(--sc-txt,#111)';
+  let activeEl=null;
+  lya.forEach((item,i)=>{
+    if(item.type==='block'){
+      const bl=document.createElement('span');
+      bl.className=i===idx?'lya-bloc-active':'';
+      bl.style.cssText='display:block;clear:both;font-weight:700;font-style:italic;margin:36px 0 36px;font-size:16px;cursor:pointer;border-radius:8px;padding:8px 12px;'+(i===idx?'background:#e67e22;color:#fff':'color:#e67e22;background:rgba(230,126,34,.15)');
+      // Afficher titre + grille complète
+      bl.innerHTML='';
+      const _ts=document.createElement('span');
+      _ts.style.cssText='display:block;font-weight:700;font-style:italic';
+      _ts.textContent=item.text||'Bloc';
+      bl.appendChild(_ts);
+      if(item.grid&&item.grid.trim()){
+        const _gs=document.createElement('span');
+        _gs.style.cssText='display:block;font-family:monospace;font-style:normal;font-weight:700;font-size:1em;margin-top:6px;white-space:pre-wrap;color:'+(i===idx?'#fff':'#e67e22')+';';
+        _gs.textContent=item.grid;
+        bl.appendChild(_gs);
+      }
+      bl.onclick=()=>{A._lyaIdx=i;renderLyAEditor();};
+      if(i===idx)activeEl=bl;
+      preview.appendChild(bl);
+    }else if(item.newline){
+      // Newline navigable — traité exactement comme un mot
+      const isActive=i===idx;
+      const wd=document.createElement('span');
+      // Même style qu'un mot normal
+      wd.style.cssText='display:inline-block;position:relative;margin:0 2px 32px;cursor:pointer;border-radius:6px;padding:2px 8px;color:var(--sc-txt,#111);'+(isActive?'outline:2px solid #e67e22;background:rgba(230,126,34,.15)':'');
+      // Accord au-dessus — même position que les autres accords
+      const ch=document.createElement('span');
+      ch.style.cssText='position:absolute;top:-24px;left:0;color:'+(isActive?'var(--sc-txt,#111)':'#e67e22')+';font-weight:800;font-size:14px;white-space:nowrap;letter-spacing:3px';
+      ch.id=isActive?'lya-active-chord':'';
+      ch.textContent=lyaDispChord(item.chord)||'';
+      wd.appendChild(ch);
+      // Contenu visible : tiret discret pour marquer l'espace
+      wd.appendChild(document.createTextNode('↵'));
+      wd.style.opacity=isActive?'1':'0.3';
+      wd.onclick=()=>{A._lyaIdx=i;renderLyAEditor();};
+      if(isActive)activeEl=wd;
+      preview.appendChild(wd);
+      preview.appendChild(document.createElement('br'));
+    }else{
+      const wd=document.createElement('span');
+      const isActive=i===idx;
+      wd.style.cssText='display:inline-block;position:relative;margin:0 1px 32px;cursor:pointer;border-radius:6px;padding:2px 4px;color:var(--sc-txt,#111);'+(isActive?'background:#e67e22;color:#fff !important':'');
+      const ch=document.createElement('span');
+      ch.style.cssText='position:absolute;top:-24px;left:0;color:'+(isActive?'var(--sc-txt,#111)':'#e67e22')+';font-weight:800;font-size:14px;white-space:nowrap;min-width:4px';
+      ch.id=isActive?'lya-active-chord':'';
+      ch.textContent=lyaDispChord(item.chord)||'';
+      wd.appendChild(ch);
+      wd.appendChild(document.createTextNode(item.word||'_'));
+      wd.onclick=()=>{
+        const wasBloc=A._lyaEditing[A._lyaIdx]&&A._lyaEditing[A._lyaIdx].type==='block';
+        A._lyaIdx=i;
+        if(wasBloc)kbHide(); // Fermer kbb avant de recréer le clavier simplifié
+        renderLyAEditor();
+      };
+      if(isActive)activeEl=wd;
+      preview.appendChild(wd);
+    }
+  });
+  body.appendChild(preview);
+  if(activeEl)setTimeout(()=>activeEl.scrollIntoView({block:'center',behavior:'smooth'}),60);
+  // Clic sur le fond du preview → quitter le mode bloc si actif
+  preview.addEventListener('click',e=>{
+    if(e.target===preview&&isBloc){kbHide();renderLyAEditor();}
+  });
+
+  // Bloquer scroll manuel si bloc actif
+  if(isBloc){
+    preview.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+    preview.addEventListener('wheel',e=>e.preventDefault(),{passive:false});
+  }
+
+  // ── Barre du bas ──
+  const bar=document.createElement('div');
+
+  if(isBloc){
+    // Barre fixed au-dessus du kbb
+    bar.style.cssText='position:fixed;left:0;right:0;bottom:0;background:#1a1a1a;border-top:2px solid #e67e22;display:flex;flex-direction:column;gap:0;padding:0;z-index:9998;box-shadow:0 -2px 12px rgba(0,0,0,.5)';
+    bar.dataset.blocbar='1';
+
+    // Boutons navigation
+    const btnRow=document.createElement('div');
+    btnRow.style.cssText='display:flex;gap:6px;padding:8px 10px';
+    const upBtn=mk('button','flex:1;padding:9px;border-radius:8px;font-size:16px;background:#555!important;color:#fff!important','↑',()=>{
+      if(idx>0){
+        const bloc=lya.splice(idx,1)[0];
+        const nl=lya[idx]&&lya[idx].newline?lya.splice(idx,1)[0]:null;
+        let newPos=idx-1;
+        while(newPos>0&&!(lya[newPos-1]&&lya[newPos-1].newline))newPos--;
+        if(nl)lya.splice(newPos,0,bloc,nl);else lya.splice(newPos,0,bloc);
+        A._lyaIdx=newPos;renderLyAEditor();
+      }
+    });
+    const dnBtn=mk('button','flex:1;padding:9px;border-radius:8px;font-size:16px;background:#555!important;color:#fff!important','↓',()=>{
+      const nlCount=lya[idx+1]&&lya[idx+1].newline?1:0;
+      if(idx+1+nlCount<lya.length){
+        const bloc=lya.splice(idx,1+nlCount);
+        let newPos=idx;
+        while(newPos<lya.length&&!(lya[newPos]&&lya[newPos].newline))newPos++;
+        newPos++;
+        lya.splice(newPos,0,...bloc);
+        A._lyaIdx=newPos;renderLyAEditor();
+      }
+    });
+    const delBtn=mk('button','flex:2;padding:9px;border-radius:8px;font-size:13px;font-weight:700;background:#e74c3c!important;color:#fff!important','✕ supprimer',()=>{
+      let n=1;if(lya[idx+1]&&lya[idx+1].newline)n=2;
+      lya.splice(idx,n);
+      if(A._lyaIdx>=lya.length)A._lyaIdx=Math.max(0,lya.length-1);
+      renderLyAEditor();
+    });
+    const doneBtn=mk('button','flex:2;padding:9px;border-radius:8px;font-size:13px;font-weight:700;background:#27ae60!important;color:#fff!important','✓ fait',()=>{
+      let next=idx+1;
+      while(next<lya.length&&lya[next].newline)next++;
+      if(next<lya.length)A._lyaIdx=next;
+      kbHide(); // Fermer kbb avant d'ouvrir le clavier simplifié
+      renderLyAEditor();
+    });
+    btnRow.appendChild(upBtn);btnRow.appendChild(dnBtn);btnRow.appendChild(delBtn);btnRow.appendChild(doneBtn);
+    bar.appendChild(btnRow);
+
+    // Section titre + textarea grille (identique à .esec)
+    const esec=document.createElement('div');esec.className='esec';
+    esec.style.cssText='margin:0 10px 10px;border:1.5px solid #333;border-radius:14px;overflow:hidden';
+    const esh=document.createElement('div');esh.className='esh';
+    const titInp=document.createElement('input');
+    titInp.value=curItem.text||'';titInp.placeholder='Nom du bloc';
+    titInp.style.cssText='flex:1;border:none;background:none;font-size:15px;font-weight:700;color:#fff;outline:none;width:auto;border-radius:0';
+    titInp.oninput=()=>{
+      curItem.text=titInp.value;
+      const bl=preview.querySelector('.lya-bloc-active');
+      if(bl){
+        const ts=bl.querySelector('span');
+        if(ts)ts.textContent=curItem.text||'Bloc';
+      }
+    };
+    esh.appendChild(titInp);esec.appendChild(esh);
+
+    const gridTa=document.createElement('textarea');
+    gridTa.style.cssText='width:100%;padding:12px 14px;border:none;font-size:16px;line-height:1.7;min-height:80px;font-family:monospace;outline:none;color:#111;background:#fff;border-radius:0;cursor:text;resize:none';
+    gridTa.setAttribute('inputmode','none');
+    gridTa.value=curItem.grid||'';gridTa.placeholder='Am  F  C  G...';
+    gridTa.oninput=()=>{
+      curItem.grid=gridTa.value;
+      const bl=preview.querySelector('.lya-bloc-active');
+      if(bl){
+        let gs=bl.querySelectorAll('span')[1];
+        if(!gs&&curItem.grid.trim()){
+          gs=document.createElement('span');
+          gs.style.cssText='display:block;font-family:monospace;font-style:normal;font-weight:700;font-size:0.85em;margin-top:4px;white-space:pre-wrap';
+          bl.appendChild(gs);
+        }
+        if(gs){gs.textContent=curItem.grid;gs.style.color='#e67e22';}
+      }
+    };
+    gridTa.addEventListener('focus',()=>kbShow(gridTa));
+    gridTa.addEventListener('click',()=>kbShow(gridTa));
+    gridTa.addEventListener('keydown',e=>{if(!e.metaKey&&!e.ctrlKey)e.preventDefault();});
+    esec.appendChild(gridTa);bar.appendChild(esec);
+
+    // Positionner bar au-dessus du kbb
+    setTimeout(()=>{
+      gridTa.focus();kbShow(gridTa);
+      const pos=()=>{
+        const kbb=document.getElementById('kbb');
+        const kbH=kbb?kbb.offsetHeight:230;
+        bar.style.bottom=kbH+'px';
+        const barH=bar.offsetHeight||180;
+        preview.style.paddingBottom=(kbH+barH+20)+'px';
+        // Centrer le bloc dans l'espace visible au-dessus de la barre
+        const ab=preview.querySelector('.lya-bloc-active');
+        if(ab){
+          const visibleHeight=window.innerHeight-(kbH+barH);
+          const abRect=ab.getBoundingClientRect();
+          const abCenter=abRect.top+abRect.height/2;
+          const targetCenter=visibleHeight/2;
+          preview.scrollTop+=abCenter-targetCenter;
+        }
+      };
+      setTimeout(pos,50);setTimeout(pos,250);
+    },80);
+
+  }else{
+    // Mode normal
+    bar.style.cssText='flex-shrink:0;padding:8px 10px;background:#1a1a1a;border-top:1px solid #333;display:flex;gap:8px;align-items:center';
+    const lbl2=mk('div','flex:1;font-size:13px;color:#aaa;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap',curItem?.word?'↑ '+curItem.word:'');
+    const blockBtn=mk('button','padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;background:#555!important;color:#fff!important;flex-shrink:0','+ Bloc',()=>{
+      let insertAt=idx;
+      while(insertAt>0&&!(lya[insertAt-1]&&lya[insertAt-1].newline))insertAt--;
+      lya.splice(insertAt,0,{type:'block',text:'Intro',grid:''},{type:'word',word:'',chord:null,space:false,newline:true});
+      A._lyaIdx=insertAt;renderLyAEditor();
+    });
+    const nextBtn=mk('button','padding:10px 18px;border-radius:10px;font-size:14px;font-weight:700;background:#e67e22!important;color:#fff!important;flex-shrink:0','espace →',()=>{
+      // Si on est sur un newline → espace insère un espace dans l'accord (pour écrire plusieurs accords)
+      // Sinon → avancer au mot suivant
+      if(curItem&&curItem.newline){lyaKbIns(' ');}else{lyaNext();}
+    });
+    bar.appendChild(lbl2);bar.appendChild(blockBtn);bar.appendChild(nextBtn);
+  }
+  body.appendChild(bar);
+
+  // ── Clavier simplifié (seulement si mot actif, pas bloc) ──
+  if(!isBloc){
+    const kbZone=document.createElement('div');
+    kbZone.style.cssText='flex-shrink:0;background:#111;border-top:1px solid #222;padding:6px;display:flex;flex-direction:column;gap:5px';
+    const r1=document.createElement('div');r1.style.cssText='display:flex;gap:4px';
+    ['m','7','maj7','m7','sus2','sus4','dim','aug'].forEach(q=>{
+      r1.appendChild(mk('button','flex:1;height:44px;font-size:12px;border-radius:8px;background:#1e1e1e!important;color:#aaa!important;padding:0',q,()=>lyaKbIns(q)));
+    });
+    const r2=document.createElement('div');r2.style.cssText='display:flex;gap:4px';
+    ['A','B','C','D','E','F','G'].forEach(n=>{
+      r2.appendChild(mk('button','flex:1;height:52px;font-size:20px;font-weight:700;border-radius:8px;background:#252525!important;color:#fff!important;padding:0',n,()=>lyaKbIns(n)));
+    });
+    ['♯','♭'].forEach((n,i)=>{
+      r2.appendChild(mk('button','flex:1;height:52px;font-size:16px;font-weight:700;border-radius:8px;background:#1e2e1e!important;color:#27ae60!important;padding:0',n,()=>lyaKbIns(i===0?'#':'b')));
+    });
+    const r3=document.createElement('div');r3.style.cssText='display:flex;gap:4px';
+    r3.appendChild(mk('button','flex:2;height:48px;font-size:20px;border-radius:8px;background:#2d1515!important;color:#e74c3c!important;padding:0','⌫',()=>{
+      if(!curItem||curItem.type==='block')return;
+      const v=curItem.chord||'';
+      if(v.length>0){curItem.chord=v.slice(0,-1)||null;}
+      const ac=document.getElementById('lya-active-chord');
+      if(ac)ac.textContent=curItem.chord||'';
+    }));
+    r3.appendChild(mk('button','flex:4;height:48px;font-size:13px;border-radius:8px;background:#3a3a3a!important;color:#ccc!important;padding:0','mot suivant →',lyaNext));
+    kbZone.appendChild(r1);kbZone.appendChild(r2);kbZone.appendChild(r3);
+    const safe=document.createElement('div');safe.style.cssText='height:max(env(safe-area-inset-bottom,0px),4px);background:#111';
+    kbZone.appendChild(safe);
+    body.appendChild(kbZone);
+  }
+}
+
+function _updateLyaSsAlt(){}
+function lyaDispChord(chord){
+  // Afficher un accord en appliquant la transpo et l'altération lya
+  if(!chord)return '';
+  let res=nrm(chord,A.lyaAlt);
+  if(A.lyaSemi)res=trTxt(res,A.lyaSemi);
+  return res;
+}
+function lyaKbIns(str){
+  const lya=A._lyaEditing;
+  const curItem=lya?.[A._lyaIdx];
+  if(!curItem||curItem.type==='block')return;
+  curItem.chord=(curItem.chord||'')+str;
+  // Mise à jour en temps réel — juste l'accord au-dessus du mot actif
+  const ac=document.getElementById('lya-active-chord');
+  if(ac)ac.textContent=lyaDispChord(curItem.chord);
+}
+
 function attachGridShortcuts(ta){
   if(ta._gridShortcuts)return;
   ta._gridShortcuts=true;
@@ -1485,7 +1954,86 @@ function attachAllGridShortcuts(){
 
   });
 }
-const _x={go,openImgFs,kbIns,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
+function trLyA(d){
+  A.lyaSemi+=d;
+  // Mettre à jour compteur transpo (éditeur et ss)
+  const td=document.getElementById('lya-td');if(td)td.textContent=(A.lyaSemi>0?'+':'')+A.lyaSemi;
+  const tdSs=document.getElementById('lya-ss-td');if(tdSs)tdSs.textContent=(A.lyaSemi>0?'+':'')+A.lyaSemi;
+  // Si on est dans ss → rerendre les paroles
+  if(document.getElementById('ss')?.style.display==='flex'){
+    rSong();
+  }else{
+    renderLyAEditor();
+  }
+}
+function apAltLya(v){
+  A.lyaAlt=v;
+  // Synchroniser avec le toggle global ♯/♭
+  setAlt(v);
+  _updateAltToggle();
+  _updateLyaSsAlt();
+  if(document.getElementById('ss')?.style.display==='flex'){
+    rSong();
+  }else{
+    renderLyAEditor();
+  }
+}
+function _updateLyaAltToggle(){
+  const bs=document.getElementById('lya-alt-sharp');
+  const bf=document.getElementById('lya-alt-flat');
+  if(bs)bs.className=A.lyaAlt==='sharp'?'alt-active':'alt-inactive';
+  if(bf)bf.className=A.lyaAlt==='flat'?'alt-active':'alt-inactive';
+}
+function lyaCancel(){
+  kbHide();
+  document.querySelectorAll('[data-blocbar]').forEach(el=>el.remove());
+  go('ss');
+}
+
+// Écran édition de bloc
+let _lyaBlocMode=null; // 'insert' ou 'edit'
+let _lyaBlocIdx=-1;
+
+function lyaNext(){
+  const lya=A._lyaEditing;
+  if(!lya)return;
+  // Avancer au prochain item navigable (mot ou newline)
+  let next=A._lyaIdx+1;
+  if(next<lya.length){A._lyaIdx=next;renderLyAEditor();}
+}
+function lyaPrev(){
+  const lya=A._lyaEditing;
+  if(!lya)return;
+  let prev=A._lyaIdx-1;
+  while(prev>=0&&lya[prev].newline)prev--;
+  if(prev>=0){A._lyaIdx=prev;renderLyAEditor();}
+}
+function lyaSave(){
+  kbHide();
+  document.querySelectorAll('[data-blocbar]').forEach(el=>el.remove());
+  A.sd.ly_a=JSON.parse(JSON.stringify(A._lyaEditing));
+  const s=DB.s?.[A.grp]?.[A.key];
+  if(s){s.ly_a=A.sd.ly_a;sDB();}
+  go('ss');rSong();
+}
+// Surcharger openLyAEditor pour aller sur l'écran slya
+const _origOpenLyAEditor=openLyAEditor;
+function openLyAEditorScreen(){
+  if(!A.sd.ly_a||A.sd.ly_a.length===0){
+    A.sd.ly_a=parseLyricsToWords(A.sd.lyr||'');
+  }
+  A._lyaEditing=JSON.parse(JSON.stringify(A.sd.ly_a));
+  A._lyaIdx=0;
+  A.lyaSemi=0;
+  go('slya');
+  // Afficher barre transpo seulement si showLya est coché
+  const tb=document.getElementById('lya-transpo-bar');
+  if(tb)tb.style.display=A.showLya?'flex':'none';
+  _updateLyaAltToggle();
+  document.getElementById('lya-td').textContent='0';
+  setTimeout(renderLyAEditor,50);
+}
+const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333">
@@ -1521,7 +2069,7 @@ Object.entries(_x).forEach(([k,v])=>window[k]=v);
     <button onmousedown="event.preventDefault()" onclick="kbIns(' | ')" style="flex:5;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:30px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">|</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns(' || ')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:14px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">||</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('-')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:22px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">-</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns(' ')" style="flex:3;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">espace</button>
+    <button onmousedown="event.preventDefault()" onclick="document.getElementById('lya-editor')?document.getElementById('slya')?.style.display==='flex'?lyaNext():kbIns(' '):kbIns(' ')" style="flex:3;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">espace</button>
     <button onmousedown="event.preventDefault()" onclick="kbNewLine()" style="flex:2;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:22px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">↵</button>
     <button onmousedown="event.preventDefault()" onclick="kbDel()" style="flex:2;height:76px;background:#2d1515!important;color:#e74c3c!important;font-size:24px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">⌫</button>
     <button onmousedown="event.preventDefault()" onclick="kbHide();if(_kbTa)_kbTa.blur()" style="flex:2;height:76px;background:#222!important;color:#888!important;font-size:18px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">⌨️</button>
