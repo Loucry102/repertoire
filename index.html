@@ -429,6 +429,8 @@ function go(id){
   if(id==='sg'){const g=document.getElementById('gs');if(g)g.value='';rGrps();sGD();}
   if(id==='sr'){const r=document.getElementById('rs');if(r)r.value='';}
   if(id==='sf'||id==='sfs')showUI();
+  // Wake lock : actif sur les écrans de lecture, relâché ailleurs
+  if(['ss','sfs','sf','ssl'].includes(id))wlRequest();else wlRelease();
 }
 async function init(){go('sl0');try{await loadDB();}catch(e){try{const sv=localStorage.getItem(LS.sess);if(sv){const u=JSON.parse(sv);A.usr={n:u.n,role:u.role||'editor'};afterLogin();return;}}catch(e2){}go('sl');return;}try{const sv=localStorage.getItem(LS.sess);if(sv){const u=JSON.parse(sv);if(DB.u?.[u.n]){A.usr={n:u.n,role:DB.u[u.n].r||DB.u[u.n].role||'editor'};afterLogin();return;}}}catch(e){}go('sl');}
 function afterLogin(){document.getElementById('wn').textContent=A.usr.n;A.alt=getAlt();A.theme=getTheme();applyTheme();const z=getZoom();A.lfs=z.lfs;A.cfs=z.cfs;A.showLya=getLya();go('si');}
@@ -950,6 +952,21 @@ document.addEventListener('touchstart',e=>{
   if(!_kbTa)return;
   if(_shouldCloseKb(e.touches[0]?.target||e.target))kbHide();
 },{passive:true});
+
+// === Wake Lock : empêcher la mise en veille sur scène ===
+let _wl=null;
+async function wlRequest(){
+  if(!('wakeLock' in navigator))return;
+  try{_wl=await navigator.wakeLock.request('screen');}catch(e){}
+}
+function wlRelease(){if(_wl){_wl.release();_wl=null;}}
+// Ré-acquérir si l'app revient au premier plan (iOS/Android libèrent le lock en arrière-plan)
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&_wl===null){
+    const on=document.querySelector('.scr.on');
+    if(on&&['ss','sfs','sf','ssl'].includes(on.id))wlRequest();
+  }
+});
 
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&document.getElementById('sl').classList.contains('on'))doLogin();});
 init();
