@@ -108,6 +108,8 @@ input::placeholder,textarea::placeholder{color:#aaa}
 .ely{width:100%;padding:14px;border:none;font-size:16px;line-height:1.7;min-height:320px;resize:vertical;font-family:inherit;outline:none;color:#111;background:#fff;border-radius:0}
 .ui-fade{transition:opacity .4s;opacity:1}
 .ui-fade.hidden{opacity:0;pointer-events:none}
+.lya-cursor{display:inline-block;width:2px;background:currentColor;height:.85em;vertical-align:middle;margin-left:1px;animation:lyablink 1s step-end infinite}
+@keyframes lyablink{0%,100%{opacity:1}50%{opacity:0}}
 #sf{background:#000;justify-content:center;align-items:center}
 .ifw{width:100%;height:100%;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:10px;gap:10px}
 .ifw img{display:block;border-radius:8px;cursor:default}
@@ -769,7 +771,7 @@ function showUI(){
 document.addEventListener('click',()=>{if(document.getElementById('sf')?.classList.contains('on')||document.getElementById('sfs')?.classList.contains('on'))showUI();});
 function sTab(t){A.tab=t;A.semi=0;rSong();}
 function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords'){const _cs=getCurSecs();document.querySelectorAll('.sc').forEach((el,i)=>{if(_cs[i])el.textContent=trTxt(nrm(_cs[i].c||'',A.alt),A.semi);});}}
-function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
+function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';const lyaWrap=document.getElementById('lya-ss-wrap');if(lyaWrap)lyaWrap.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
 function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.ly_a)A.ed.ly_a=A.sd.ly_a||null;if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];A._edInst=A.instMode||'guitar';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
   rES();go('se');setTimeout(attachAllGridShortcuts,50);}
 function sET(t){cEF();A.et=t;rES();setTimeout(attachAllGridShortcuts,50);}
@@ -966,7 +968,7 @@ function rSFAdd(){
   const c2=document.getElementById('sf2add');if(!c2)return;c2.innerHTML='';
   A.psecs.forEach((s,i)=>{
     const d=document.createElement('div');d.className='esec';
-    d.innerHTML='<div class="esh"><input value="'+s.n+'" placeholder="Nom" oninput="A.psecs['+i+'].n=this.value"/><button class="rm" onclick="rSecAdd('+i+')">✕</button></div><textarea inputmode="none" placeholder="Am  F  C  G..." oninput="A.psecs['+i+'].c=this.value">'+s.c+'</textarea>';
+    d.innerHTML='<div class="esh"><input value="'+s.n+'" placeholder="Nom" oninput="A.psecs['+i+'].n=this.value"/>'+((i>0)?'<button class="rm" style="background:#444!important;color:#fff!important" onclick="mvSecAdd('+i+',-1)">↑</button>':'<button class="rm" style="background:#444!important;color:#fff!important;opacity:.3" disabled>↑</button>')+''+((i<A.psecs.length-1)?'<button class="rm" style="background:#444!important;color:#fff!important" onclick="mvSecAdd('+i+',1)">↓</button>':'<button class="rm" style="background:#444!important;color:#fff!important;opacity:.3" disabled>↓</button>')+'<button class="rm" onclick="rSecAdd('+i+')">✕</button></div><textarea inputmode="none" placeholder="Am  F  C  G..." oninput="A.psecs['+i+'].c=this.value">'+s.c+'</textarea>';
     c2.appendChild(d);
   });
   c2.querySelectorAll('textarea').forEach(ta=>{
@@ -977,6 +979,7 @@ function rSFAdd(){
 }
 function aSecAdd(){capSFAdd();A.psecs.push({n:'Section '+(A.psecs.length+1),c:''});rSFAdd();}
 function rSecAdd(i){capSFAdd();A.psecs.splice(i,1);rSFAdd();}
+function mvSecAdd(i,dir){capSFAdd();const j=i+dir;if(j<0||j>=A.psecs.length)return;const tmp=A.psecs[i];A.psecs[i]=A.psecs[j];A.psecs[j]=tmp;rSFAdd();setTimeout(attachAllGridShortcuts,50);}
 function cpAddGrid(){
   capSFAdd();
   // Copie dans le clipboard global (partagé avec le modifier)
@@ -1056,7 +1059,11 @@ function rEdSecs(body,inst){
     const d=document.createElement('div');d.className='esec';
     const inp=document.createElement('input');inp.value=s.n||'';inp.placeholder='Nom';inp.oninput=()=>{A.ed[key][i].n=inp.value;};
     const rm=mk('button','','✕',()=>{A.ed[key].splice(i,1);rES();});rm.className='rm';
-    const esh=document.createElement('div');esh.className='esh';esh.appendChild(inp);esh.appendChild(rm);
+    const upB=mk('button','width:26px;height:26px;border-radius:7px;font-size:13px;padding:0;background:#444!important;color:#fff!important;flex-shrink:0','↑',()=>{if(i===0)return;const tmp=A.ed[key][i];A.ed[key][i]=A.ed[key][i-1];A.ed[key][i-1]=tmp;rES();});
+    const dnB=mk('button','width:26px;height:26px;border-radius:7px;font-size:13px;padding:0;background:#444!important;color:#fff!important;flex-shrink:0','↓',()=>{if(i===A.ed[key].length-1)return;const tmp=A.ed[key][i];A.ed[key][i]=A.ed[key][i+1];A.ed[key][i+1]=tmp;rES();});
+    if(i===0)upB.style.opacity='0.3';
+    if(i===A.ed[key].length-1)dnB.style.opacity='0.3';
+    const esh=document.createElement('div');esh.className='esh';esh.appendChild(inp);esh.appendChild(upB);esh.appendChild(dnB);esh.appendChild(rm);
     const textarea=document.createElement('textarea');
     textarea.style.cssText='width:100%;padding:12px 14px;border:none;font-size:16px;line-height:1.7;min-height:90px;font-family:monospace;outline:none;color:#111;background:#fff;border-radius:0;cursor:text';
     textarea.setAttribute('inputmode','none');
@@ -1603,6 +1610,7 @@ function openLyA(){
 function renderLyA(container,lya,fontSize){
   container.innerHTML='';
   const wrap=document.createElement('div');
+  wrap.id='lya-ss-wrap';
   wrap.style.cssText='font-size:'+(fontSize||A.lfs)+'px;line-height:3;word-break:break-word;color:var(--sc-txt,#111)';
   (lya||[]).forEach(item=>{
     if(item.type==='block'){
@@ -1673,11 +1681,12 @@ function parseLyricsToWords(lyr){
   return result;
 }
 
-function renderLyAEditor(){
+function renderLyAEditor(noScroll){
   const lya=A._lyaEditing;
   const idx=A._lyaIdx;
   const body=document.getElementById('lya-editor');
   if(!body)return;
+  const _savedScroll=noScroll?(document.getElementById('lya-preview')?.scrollTop||0):0;
   body.innerHTML='';
   // Supprimer toute barre de bloc fixe qui traînerait
   document.querySelectorAll('[data-blocbar]').forEach(el=>el.remove());
@@ -1720,11 +1729,11 @@ function renderLyAEditor(){
       const ch=document.createElement('span');
       ch.style.cssText='position:absolute;top:-24px;left:0;color:'+(isActive?'var(--sc-txt,#111)':'#e67e22')+';font-weight:800;font-size:14px;white-space:nowrap;letter-spacing:3px';
       ch.id=isActive?'lya-active-chord':'';
-      ch.textContent=lyaDispChord(item.chord)||'';
+      ch.textContent=isActive?(lyaDispChord(item.chord)||'').replace(/ /g,' '):lyaDispChord(item.chord)||'';
+      if(isActive){const cur=document.createElement('span');cur.className='lya-cursor';ch.appendChild(cur);}
       wd.appendChild(ch);
-      // Contenu visible : tiret discret pour marquer l'espace
-      wd.appendChild(document.createTextNode('↵'));
-      wd.style.opacity=isActive?'1':'0.3';
+      // Contenu visible : ↵ opacifié seulement, l'accord reste toujours lisible
+      const nlText=document.createElement('span');nlText.textContent='↵';nlText.style.opacity=isActive?'1':'0.35';wd.appendChild(nlText);
       wd.onclick=()=>{
         const wasBloc=A._lyaEditing[A._lyaIdx]&&A._lyaEditing[A._lyaIdx].type==='block';
         A._lyaIdx=i;
@@ -1741,7 +1750,8 @@ function renderLyAEditor(){
       const ch=document.createElement('span');
       ch.style.cssText='position:absolute;top:-24px;left:0;color:'+(isActive?'var(--sc-txt,#111)':'#e67e22')+';font-weight:800;font-size:14px;white-space:nowrap;min-width:4px';
       ch.id=isActive?'lya-active-chord':'';
-      ch.textContent=lyaDispChord(item.chord)||'';
+      ch.textContent=isActive?(lyaDispChord(item.chord)||'').replace(/ /g,' '):lyaDispChord(item.chord)||'';
+      if(isActive){const cur=document.createElement('span');cur.className='lya-cursor';ch.appendChild(cur);}
       wd.appendChild(ch);
       wd.appendChild(document.createTextNode(item.word||'_'));
       wd.onclick=()=>{
@@ -1756,7 +1766,7 @@ function renderLyAEditor(){
     }
   });
   body.appendChild(preview);
-  if(activeEl)setTimeout(()=>activeEl.scrollIntoView({block:'center',behavior:'smooth'}),60);
+  if(!noScroll&&activeEl)setTimeout(()=>activeEl.scrollIntoView({block:'center',behavior:'smooth'}),60);else if(noScroll){const _np=document.getElementById('lya-preview');if(_np)_np.scrollTop=_savedScroll;}
   // Clic sur le fond du preview → quitter le mode bloc si actif
   preview.addEventListener('click',e=>{
     if(e.target===preview&&isBloc){kbHide();renderLyAEditor();}
@@ -1889,10 +1899,8 @@ function renderLyAEditor(){
       lya.splice(insertAt,0,{type:'block',text:'Intro',grid:''},{type:'word',word:'',chord:null,space:false,newline:true});
       A._lyaIdx=insertAt;renderLyAEditor();
     });
-    const nextBtn=mk('button','padding:10px 18px;border-radius:10px;font-size:14px;font-weight:700;background:#e67e22!important;color:#fff!important;flex-shrink:0','espace →',()=>{
-      // Si on est sur un newline → espace insère un espace dans l'accord (pour écrire plusieurs accords)
-      // Sinon → avancer au mot suivant
-      if(curItem&&curItem.newline){lyaKbIns(' ');}else{lyaNext();}
+    const nextBtn=mk('button','padding:10px 18px;border-radius:10px;font-size:14px;font-weight:700;background:#e67e22!important;color:#fff!important;flex-shrink:0','espace',()=>{
+      lyaKbIns(' ');
     });
     bar.appendChild(lbl2);bar.appendChild(blockBtn);bar.appendChild(nextBtn);
   }
@@ -1918,8 +1926,7 @@ function renderLyAEditor(){
       if(!curItem||curItem.type==='block')return;
       const v=curItem.chord||'';
       if(v.length>0){curItem.chord=v.slice(0,-1)||null;}
-      const ac=document.getElementById('lya-active-chord');
-      if(ac)ac.textContent=curItem.chord||'';
+      renderLyAEditor(true);
     }));
     r3.appendChild(mk('button','flex:4;height:56px;font-size:14px;border-radius:8px;background:#3a3a3a!important;color:#ccc!important;padding:0','mot suivant →',lyaNext));
     kbZone.appendChild(r1);kbZone.appendChild(r2);kbZone.appendChild(r3);
@@ -1942,9 +1949,7 @@ function lyaKbIns(str){
   const curItem=lya?.[A._lyaIdx];
   if(!curItem||curItem.type==='block')return;
   curItem.chord=(curItem.chord||'')+str;
-  // Mise à jour en temps réel — juste l'accord au-dessus du mot actif
-  const ac=document.getElementById('lya-active-chord');
-  if(ac)ac.textContent=lyaDispChord(curItem.chord);
+  renderLyAEditor(true);
 }
 
 function attachGridShortcuts(ta){
@@ -2041,7 +2046,7 @@ function openLyAEditorScreen(){
   document.getElementById('lya-td').textContent='0';
   setTimeout(renderLyAEditor,50);
 }
-const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
+const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333">
