@@ -381,7 +381,7 @@ async function loadDB(){
   if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};
 }
 async function sDB(){
-  try{await setDoc(_doc,DB);}catch(e){}
+  try{await setDoc(_doc,DB);}catch(e){console.warn('Firestore save failed:',e);}
   localStorage.setItem('scene_db',JSON.stringify(DB));
 }
 async function compressImg(file){
@@ -708,7 +708,7 @@ function openFs(type){
   A.fsType=type;go('sfs');requestAnimationFrame(()=>{const max=fc.scrollHeight-fc.clientHeight;fc.scrollTop=ratio*max;});
 }
 function exitFs(){go('ss');}
-function zmFs(d){const fc=document.getElementById('fscontent');if(A.fsType==='chords'){A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));fc.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');document.querySelectorAll('#sb .sc').forEach(el=>el.style.fontSize=A.cfs+'px');}else{A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));fc.querySelectorAll('.lt').forEach(el=>el.style.fontSize=A.lfs+'px');const el2=document.querySelector('#sb .lt');if(el2)el2.style.fontSize=A.lfs+'px';}saveZoom();showUI();}
+function zmFs(d){const fc=document.getElementById('fscontent');if(A.fsType==='chords'){A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));fc.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');document.querySelectorAll('#sb .sc').forEach(el=>el.style.fontSize=A.cfs+'px');}else{A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));fc.querySelectorAll('.lt').forEach(el=>el.style.fontSize=A.lfs+'px');const lyaW=fc.querySelector('#lya-ss-wrap');if(lyaW)lyaW.style.fontSize=A.lfs+'px';const el2=document.querySelector('#sb .lt');if(el2)el2.style.fontSize=A.lfs+'px';const lyaW2=document.getElementById('lya-ss-wrap');if(lyaW2&&!fc.contains(lyaW2))lyaW2.style.fontSize=A.lfs+'px';}saveZoom();showUI();}
 function zmImg(d){
   document.querySelectorAll('#ifw img').forEach(img=>{
     const initW=parseInt(img.dataset.initW)||img.offsetWidth;
@@ -890,9 +890,25 @@ function _updateKbPos(){
   if(!window.visualViewport)return;
   const vv=window.visualViewport;
   const kbHeight=Math.max(0,window.innerHeight-(vv.height+vv.offsetTop));
-  // Décaler la modale vers le haut pour qu'elle reste visible
   const mov=document.querySelector('.mov');
-  if(mov)mov.style.transform=kbHeight>50?'translateY(-'+Math.round(kbHeight/2)+'px)':'';
+  if(!mov)return;
+  if(kbHeight>50){
+    // Clavier ouvert : ancrer la modale en haut pour que les champs restent visibles
+    mov.style.alignItems='flex-start';
+    mov.style.paddingTop=Math.max(8,vv.offsetTop+8)+'px';
+    mov.style.transform='';
+    // Scroller vers le champ actif à l'intérieur du .msh
+    const el=document.activeElement;
+    const msh=mov.querySelector('.msh');
+    if(el&&msh&&msh.contains(el)){
+      setTimeout(()=>el.scrollIntoView({block:'nearest',behavior:'smooth'}),120);
+    }
+  }else{
+    // Clavier fermé : restaurer le centrage vertical
+    mov.style.alignItems='';
+    mov.style.paddingTop='';
+    mov.style.transform='';
+  }
 }
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize',_updateKbPos);
@@ -1492,7 +1508,7 @@ function goSlDetail(grp,idx){
   body.appendChild(wrap);
   // S'assurer que le body flex pour le scroll
   body.classList.add('scr-flex');
-  if(A._slScroll){const _ss=A._slScroll;A._slScroll=0;setTimeout(()=>{const _w=document.getElementById("sl3-wrap");if(_w)_w.scrollTop=_ss;},150);}
+  if(A._slScroll!=null){const _ss=A._slScroll;A._slScroll=0;setTimeout(()=>{const _w=document.getElementById("sl3-wrap");if(_w)_w.scrollTop=_ss;},150);}
 }
 
 function openSlPicker(grp,idx){
@@ -1615,12 +1631,12 @@ function renderLyA(container,lya,fontSize){
   (lya||[]).forEach(item=>{
     if(item.type==='block'){
       const bl=document.createElement('div');
-      bl.style.cssText='color:#e67e22;font-weight:700;font-style:italic;margin:36px 0 6px;font-size:.8em;display:block';
+      bl.style.cssText='color:#e67e22;font-weight:700;font-style:italic;margin:16px 0 4px;font-size:.8em;display:block';
       bl.textContent=item.text;
       wrap.appendChild(bl);
       if(item.grid&&item.grid.trim()){
         const gr=document.createElement('div');
-        gr.style.cssText='font-family:monospace;font-weight:700;font-size:.9em;color:#e67e22;margin-bottom:36px;white-space:pre-wrap';
+        gr.style.cssText='font-family:monospace;font-weight:700;font-size:.9em;color:#e67e22;margin-bottom:10px;white-space:pre-wrap';
         // Appliquer transpo et altération lya sur la grille du bloc
         let gridTxt=nrm(item.grid,A.lyaAlt);
         if(A.lyaSemi)gridTxt=trTxt(gridTxt,A.lyaSemi);
@@ -1936,7 +1952,7 @@ function renderLyAEditor(noScroll){
   }
 }
 
-function _updateLyaSsAlt(){}
+function _updateLyaSsAlt(){_updateLyaAltToggle();}
 function lyaDispChord(chord){
   // Afficher un accord en appliquant la transpo et l'altération lya
   if(!chord)return '';
@@ -2030,7 +2046,6 @@ function lyaSave(){
   go('ss');rSong();
 }
 // Surcharger openLyAEditor pour aller sur l'écran slya
-const _origOpenLyAEditor=openLyAEditor;
 function openLyAEditorScreen(){
   if(!A.sd.ly_a||A.sd.ly_a.length===0){
     A.sd.ly_a=parseLyricsToWords(A.sd.lyr||'');
@@ -2052,27 +2067,27 @@ Object.entries(_x).forEach(([k,v])=>window[k]=v);
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333">
   <!-- Rangée 1 : Qualités -->
   <div style="display:flex;width:100%;gap:5px;margin-bottom:5px">
-    <button onmousedown="event.preventDefault()" onclick="kbIns('m')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('maj7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">maj7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('m7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:13px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('sus2')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus2</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('sus4')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus4</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('dim')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">dim</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('aug')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">aug</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('add9')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">add9</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('m')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">7</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('maj7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">maj7</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('m7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:13px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m7</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('sus2')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus2</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('sus4')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus4</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('dim')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">dim</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('aug')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">aug</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('add9')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">add9</button>
   </div>
   <!-- Rangée 2 : Notes -->
   <div style="display:flex;width:100%;gap:5px;margin-bottom:5px">
-    <button onmousedown="event.preventDefault()" onclick="kbIns('A')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">A</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('B')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">B</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('C')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">C</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('D')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">D</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('E')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">E</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('F')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">F</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('G')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">G</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('#')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♯</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('b')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♭</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('A')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">A</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('B')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">B</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('C')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">C</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('D')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">D</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('E')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">E</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('F')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">F</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('G')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">G</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('#')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♯</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('b')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♭</button>
   </div>
   <!-- Rangée 3 : Séparateurs + actions -->
   <div style="display:flex;width:100%;gap:5px">
