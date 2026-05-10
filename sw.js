@@ -1,7 +1,10 @@
-const CACHE = 'scene-v2';
+const CACHE = 'scene-v22';
 const ASSETS = [
   './',
   './index.html',
+  './guitar.png',
+  './bass.png',
+  './mic.png',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js',
 ];
