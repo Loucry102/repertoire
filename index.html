@@ -1994,6 +1994,7 @@ function renderLyAEditor(noScroll){
   }
 
   // ── Barre du bas ──
+  const _refocus=()=>{setTimeout(()=>{const i=document.getElementById('lya-chord-inp');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},20);};
   const bar=document.createElement('div');
 
   if(isBloc){
@@ -2108,7 +2109,7 @@ function renderLyAEditor(noScroll){
     // Mode normal
     bar.style.cssText='flex-shrink:0;padding:8px 10px;background:#1a1a1a;border-top:1px solid #333;display:flex;gap:8px;align-items:center';
     const lbl2=mk('div','flex:1;font-size:13px;color:#aaa;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap',curItem?.word?'↑ '+curItem.word:'');
-    const _ns=el=>{el.addEventListener('mousedown',e=>e.preventDefault());el.addEventListener('touchstart',e=>{e.preventDefault();el.click();},{passive:false});return el;};
+    const _ns=el=>{el.addEventListener('mousedown',e=>e.preventDefault());el.addEventListener('touchstart',e=>{e.preventDefault();el.click();_refocus();},{passive:false});return el;};
     const blockBtn=_ns(mk('button','padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;background:#555!important;color:#fff!important;flex-shrink:0','+ Bloc',()=>{
       let insertAt=idx;
       while(insertAt>0&&!(lya[insertAt-1]&&lya[insertAt-1].newline))insertAt--;
@@ -2127,10 +2128,10 @@ function renderLyAEditor(noScroll){
     // Ajouter curseur clignotant visible sur le mot actif
     const activeInp=document.getElementById('lya-chord-inp');
     if(activeInp){
-      const cur=document.createElement('span');cur.className='lya-cursor';cur.style.cssText='display:inline-block;width:2px;height:1em;background:'+(A.lyaColor||'#e67e22')+';vertical-align:middle;margin-left:2px;animation:lyablink 1s step-end infinite';
+      const cur=document.createElement('span');cur.className='lya-cursor';cur.style.cssText='display:inline-block;width:2px;height:1em;vertical-align:middle;margin-left:2px;animation:lyablink 1s step-end infinite';
       activeInp.parentNode.appendChild(cur);
     }
-    const noSteal=el=>{el.addEventListener('mousedown',e=>e.preventDefault());el.addEventListener('touchstart',e=>{e.preventDefault();el.click();},{passive:false});return el;};
+    const noSteal=el=>{el.addEventListener('mousedown',e=>e.preventDefault());el.addEventListener('touchstart',e=>{e.preventDefault();el.click();_refocus();},{passive:false});return el;};
     const kbZone=document.createElement('div');
     kbZone.style.cssText='flex-shrink:0;background:#111;border-top:1px solid #222;padding:6px;display:flex;flex-direction:column;gap:5px';
     const r1=document.createElement('div');r1.style.cssText='display:flex;gap:4px';
