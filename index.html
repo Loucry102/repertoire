@@ -159,7 +159,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 .btn-guitar{background:linear-gradient(135deg,#2ecc71,#27ae60)!important;color:#fff!important;box-shadow:0 3px 14px rgba(39,174,96,.4)}
 .ly-word{display:inline-block;position:relative;margin:0 2px 18px}
 .ly-chord{position:absolute;top:-20px;left:0;color:#e67e22;font-weight:700;font-size:.75em;font-family:monospace;white-space:nowrap}
-.ly-block{display:block;color:#e67e22;font-weight:700;font-style:italic;margin:12px 0 6px;font-size:.85em}
+.ly-block{display:block;color:#e67e22;font-weight:700;font-style:italic;margin:2px 0 0px;font-size:.85em}
 .btn-bass{background:linear-gradient(135deg,#9b59b6,#8e44ad)!important;color:#fff!important;box-shadow:0 3px 14px rgba(155,89,182,.4)}
 .btn-add-inst{background:linear-gradient(135deg,#2ecc71,#27ae60)!important;color:#fff!important;box-shadow:0 3px 12px rgba(39,174,96,.35)}
 .pvf-bar{padding:6px 10px 4px;overflow-x:auto;display:flex;gap:6px;flex-shrink:0;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:center;border-bottom:1px solid #252525}
@@ -673,9 +673,9 @@ function oSong(nm){A.key=nm;A.semi=0;const s=DB.s?.[A.grp]?.[nm]||{};
   const _slnav=document.getElementById('sl-nav');
   if(A.slMode){
     if(!_slnav){
-      const nav=document.createElement('div');nav.id='sl-nav';nav.style.cssText='display:flex;align-items:center;gap:4px;margin-left:4px;flex-shrink:0';
-      const prevB=mk('button','','←',slPrev);prevB.id='sl-prev';prevB.className='ib';prevB.style.cssText='font-size:16px;width:34px;height:34px;padding:0';
-      const nextB=mk('button','','→',slNext);nextB.id='sl-next';nextB.className='ib';nextB.style.cssText='font-size:16px;width:34px;height:34px;padding:0';
+      const nav=document.createElement('div');nav.id='sl-nav';nav.style.cssText='display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0';
+      const prevB=mk('button','','précédent',slPrev);prevB.id='sl-prev';prevB.className='ib';prevB.style.cssText='font-size:13px;font-weight:600;padding:0 12px;width:auto;height:36px;border-radius:10px';
+      const nextB=mk('button','','suivant',slNext);nextB.id='sl-next';nextB.className='ib';nextB.style.cssText='font-size:13px;font-weight:600;padding:0 12px;width:auto;height:36px;border-radius:10px';
       nav.appendChild(prevB);nav.appendChild(nextB);
       const _hdr=document.querySelector('#ss .shdr');if(_hdr)_hdr.appendChild(nav);
     }
@@ -791,7 +791,7 @@ function rSong(){
     // Boutons accords — fixe en bas à droite
     const _lyaExist=A.sd.ly_a&&A.sd.ly_a.some(it=>it.chord||it.grid);
     const _lyaCanAdd=canEdit()&&A.sd.lyr&&A.sd.lyr.trim();
-    if(A.showLya&&canEdit()&&_lyaCanAdd){
+    if(A.showLya&&canEdit()&&_lyaCanAdd&&!A.slMode){
       const fabWrap=document.createElement('div');
       fabWrap.style.cssText='position:fixed;bottom:max(env(safe-area-inset-bottom,0px),90px);right:80px;display:flex;flex-direction:column;gap:8px;z-index:50';
       const editBtn=mk('button','padding:10px 16px;border-radius:14px;background:#333!important;color:#fff!important;font-size:13px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.5);white-space:nowrap',_lyaExist?'✏️ modifier accords':'+ accords',()=>openLyAEditorScreen());
@@ -1807,13 +1807,13 @@ function renderLyA(container,lya,fontSize){
       wrap.appendChild(bl);
       if(item.grid&&item.grid.trim()){
         const gr=document.createElement('div');
-        gr.style.cssText='font-family:monospace;font-weight:700;font-size:.9em;color:'+(A.lyaColor||'#e67e22')+';margin-bottom:10px;white-space:pre-wrap';
-        // Appliquer transpo et altération lya sur la grille du bloc
+        gr.style.cssText='font-family:monospace;font-weight:700;font-size:.9em;color:'+(A.lyaColor||'#e67e22')+';margin:0;white-space:pre-wrap;line-height:1';
         let gridTxt=nrm(item.grid,A.lyaAlt);
         if(A.lyaSemi)gridTxt=trTxt(gridTxt,A.lyaSemi);
         gr.textContent=gridTxt;
         wrap.appendChild(gr);
       }
+      const pull=document.createElement('div');pull.style.cssText='height:0;line-height:0;margin-bottom:-1em';wrap.appendChild(pull);
     }else if(item.newline){
       if(item.chord){
         // Accord entre deux phrases — même style qu'un mot normal
