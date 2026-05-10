@@ -1,9 +1,17 @@
 {
-  "name": "Scène",
-  "short_name": "Scène",
-  "start_url": "/repertoire/",
+  "name": "Répertoire",
+  "short_name": "Répertoire",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#161616",
-  "theme_color": "#161616",
-  "orientation": "any"
+  "background_color": "#0e0e0e",
+  "theme_color": "#0e0e0e",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./guitar.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
