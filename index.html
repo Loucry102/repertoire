@@ -95,8 +95,9 @@ input::placeholder,textarea::placeholder{color:#aaa}
 .sc{font-size:24px;line-height:1.9;white-space:pre-wrap;word-break:break-word;color:var(--sc-txt,#111);font-family:monospace;font-weight:700}
 .lw{background:var(--cw-bg,#fff);border-radius:18px;padding:16px;box-shadow:0 2px 14px rgba(0,0,0,.18)}
 .lt{font-size:24px;line-height:1.9;white-space:pre-wrap;word-break:break-word;color:var(--sc-txt,#000);font-weight:700}
-.zbar{position:fixed;bottom:max(env(safe-area-inset-bottom,0px),16px);left:16px;display:flex;align-items:center;gap:6px;background:rgba(18,18,18,.92);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:7px 12px;z-index:100;box-shadow:0 4px 24px rgba(0,0,0,.65);backdrop-filter:blur(10px)}
+.zbar{position:fixed;bottom:max(calc(env(safe-area-inset-bottom,0px) + 30px),46px);left:28px;display:flex;align-items:center;gap:6px;background:rgba(18,18,18,.92);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:7px 12px;z-index:100;box-shadow:0 4px 24px rgba(0,0,0,.65);backdrop-filter:blur(10px)}
 .zb{width:38px;height:38px;font-size:22px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.1)!important;color:#fff!important;border:1px solid rgba(255,255,255,.09)!important}
+#sfs-zbar .zb{width:52px;height:52px;font-size:28px;}
 .etb{padding:12px 14px;padding-bottom:max(env(safe-area-inset-bottom,0px),12px);background:#0e0e0e;border-top:1px solid #252525;display:flex;gap:10px;flex-shrink:0}
 .etb button{flex:1;padding:15px;font-size:15px;border-radius:14px}
 .sv{background:linear-gradient(135deg,#2ecc71,#27ae60)!important;color:#fff!important;border:none!important;box-shadow:0 3px 16px rgba(39,174,96,.4)}
@@ -303,7 +304,7 @@ if('serviceWorker' in navigator){
 
 </div>
 <div id="sfs" class="scr">
-  <div class="ui-fade" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:16px;background:#222;border-radius:14px;padding:7px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.5)"><button id="sfs-back" onclick="exitFs()" style="width:38px;height:38px;border-radius:9px;background:#fff!important;color:#111!important;display:flex;align-items:center;justify-content:center;padding:0;border:none"><svg viewBox="0 0 24 24" style="stroke:#111;fill:none;stroke-width:2.5;stroke-linecap:round;width:22px;height:22px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
+  <div class="ui-fade" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:16px;background:#222;border-radius:14px;padding:7px;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.5)"><button id="sfs-back" onclick="exitFs()" style="width:54px;height:54px;border-radius:12px;background:#fff!important;color:#111!important;display:flex;align-items:center;justify-content:center;padding:0;border:none"><svg viewBox="0 0 24 24" style="stroke:#111;fill:none;stroke-width:2.5;stroke-linecap:round;width:28px;height:28px"><polyline points="15 18 9 12 15 6"/></svg></button></div>
   <div class="ui-fade" id="sfs-title" style="position:fixed;top:max(env(safe-area-inset-top,0px),16px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);border-radius:14px;padding:10px 22px;font-size:22px;font-weight:800;color:#fff;z-index:100;white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.06em;box-shadow:0 2px 12px rgba(0,0,0,.5);pointer-events:none"></div>
   <div class="ui-fade" id="sfs-slnav" style="display:none;z-index:100">
     <div style="position:fixed;top:50%;transform:translateY(-50%);left:16px;background:#222;border-radius:18px;padding:10px;box-shadow:0 2px 16px rgba(0,0,0,.5)"><button onclick="slPrev()" id="sfs-prev" style="width:76px;height:76px;border-radius:14px;background:#fff!important;color:#111!important;font-size:44px;border:none!important;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">←</button></div>
