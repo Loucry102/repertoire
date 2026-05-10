@@ -1925,7 +1925,7 @@ function renderLyAEditor(noScroll){
         inp.id='lya-chord-inp';
         inp.value=item.chord||'';
         inp.size=Math.max(1,(item.chord||'').length+2);
-        inp.style.cssText='position:absolute;top:-24px;left:0;color:var(--sc-txt,#111);font-weight:800;font-size:14px;white-space:pre;letter-spacing:3px;background:transparent;border:none;outline:none;padding:0;margin:0;font-family:inherit;cursor:text;min-width:4px;max-width:200px;overflow:hidden';
+        inp.style.cssText='position:absolute;top:-24px;left:0;color:var(--sc-txt,#111);font-weight:800;font-size:14px;white-space:pre;letter-spacing:3px;background:transparent;border:none;outline:none;padding:0;margin:0;font-family:inherit;cursor:text;min-width:4px;max-width:200px';
         inp.addEventListener('input',()=>{const ci=A._lyaEditing[A._lyaIdx];if(ci)ci.chord=inp.value||null;inp.size=Math.max(1,inp.value.length+2);});
         wd.appendChild(inp);
         inp.addEventListener('click',e=>e.stopPropagation());
@@ -1957,7 +1957,7 @@ function renderLyAEditor(noScroll){
         inp.id='lya-chord-inp';
         inp.value=item.chord||'';
         inp.size=Math.max(1,(item.chord||'').length+2);
-        inp.style.cssText='position:absolute;top:-24px;left:0;color:var(--sc-txt,#111);font-weight:800;font-size:14px;white-space:pre;background:transparent;border:none;outline:none;padding:0;margin:0;font-family:inherit;cursor:text;min-width:4px;max-width:200px;overflow:hidden';
+        inp.style.cssText='position:absolute;top:-24px;left:0;color:var(--sc-txt,#111);font-weight:800;font-size:14px;white-space:pre;background:transparent;border:none;outline:none;padding:0;margin:0;font-family:inherit;cursor:text;min-width:4px;max-width:200px';
         inp.addEventListener('input',()=>{const ci=A._lyaEditing[A._lyaIdx];if(ci)ci.chord=inp.value||null;inp.size=Math.max(1,inp.value.length+2);});
         wd.appendChild(inp);
         inp.addEventListener('click',e=>e.stopPropagation());
