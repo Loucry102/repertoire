@@ -1,7 +1,8 @@
-const CACHE = 'scene-v22';
+const CACHE = 'scene-v23';
 const ASSETS = [
   './',
   './index.html',
+  './manifest.json',
   './guitar.png',
   './bass.png',
   './mic.png',
