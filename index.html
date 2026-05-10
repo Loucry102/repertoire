@@ -71,7 +71,7 @@ input::placeholder,textarea::placeholder{color:#aaa}
 .mm-val{font-size:11px;color:var(--mi-txt);font-weight:700;text-transform:uppercase}
 .mi-sep{height:1px;background:#333;margin:6px 0}
 :root.light .mi-sep{background:#ddd}
-.pub{position:absolute;bottom:max(env(safe-area-inset-bottom,0px),16px);left:16px;padding:14px 28px;font-size:15px;border-radius:16px;z-index:10;background:linear-gradient(135deg,#f0922b,#e67e22)!important;color:#fff!important;border:none!important;font-weight:700;box-shadow:0 4px 22px rgba(230,126,34,.5);letter-spacing:.02em}
+.pub{position:absolute;bottom:max(calc(env(safe-area-inset-bottom,0px) + 32px),48px);right:28px;padding:14px 28px;font-size:15px;border-radius:16px;z-index:10;background:linear-gradient(135deg,#f0922b,#e67e22)!important;color:#fff!important;border:none!important;font-weight:700;box-shadow:0 4px 22px rgba(230,126,34,.5);letter-spacing:.02em}
 .nr{text-align:center;color:#555;margin-top:3rem;font-size:16px;line-height:1.7}
 .dd{position:absolute;right:0;top:calc(100% + 8px);background:#fff;border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.06);z-index:300;overflow:hidden;min-width:180px;border:1px solid rgba(0,0,0,.06)}
 .di{width:100%;padding:15px 20px;text-align:left;font-size:15px;font-weight:600;border:none;border-radius:0;display:block;background:#fff!important;color:#111!important}
@@ -173,6 +173,10 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width=
 :root.light .ttb.on{background:#ffffff!important;color:#111!important;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 :root.light .tb{background:#e4e4e4!important;color:#333!important;border:1px solid rgba(0,0,0,.1)!important}
 :root.light .cn{background:#e4e4e4!important;color:#555!important;border:1px solid #d0d0d0!important}
+:root.light .hdr .bk,:root.light .shdr .bk{background:#fff!important;color:#111!important;border:1.5px solid rgba(0,0,0,.18)!important;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+:root.light .hdr .ib,:root.light .shdr .ib{background:#fff!important;color:#111!important;border:1.5px solid rgba(0,0,0,.18)!important;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+:root.light .hdr .ib svg,:root.light .shdr .ib svg{stroke:#111}
+:root.light .zb{background:#fff!important;color:#111!important;border:1.5px solid rgba(0,0,0,.18)!important;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 </style>
 <script>
 if('serviceWorker' in navigator){
@@ -542,16 +546,15 @@ function rPvfTabs(){
   if(!inPrv()){bar.style.display='none';return;}
   const folders=getPvF(),keys=Object.keys(folders);
   bar.style.display='flex';bar.innerHTML='';
-  if(keys.length){
-    const all=document.createElement('button');all.className='pvf-tab'+(A.prvFolder===null?' on':'');all.textContent='Tous';all.onclick=()=>{A.prvFolder=null;rRep('');};bar.appendChild(all);
-    keys.forEach(f=>{
-      const t=document.createElement('button');t.className='pvf-tab'+(A.prvFolder===f?' on':'');
-      t.innerHTML=f+'<span style="margin-left:7px;font-size:11px;opacity:.55;line-height:1;vertical-align:middle">✕</span>';
-      t.querySelector('span').addEventListener('click',ev=>{ev.stopPropagation();cfDelPvF(f);});
-      t.onclick=()=>{A.prvFolder=f;rRep('');};bar.appendChild(t);
-    });
-  }
+  const gen=document.createElement('button');gen.className='pvf-tab'+(A.prvFolder===null?' on':'');gen.textContent='général';gen.onclick=()=>{A.prvFolder=null;rRep('');};bar.appendChild(gen);
+  keys.forEach(f=>{
+    const t=document.createElement('button');t.className='pvf-tab'+(A.prvFolder===f?' on':'');
+    t.innerHTML=f+'<span style="margin-left:7px;font-size:11px;opacity:.55;line-height:1;vertical-align:middle">✕</span>';
+    t.querySelector('span').addEventListener('click',ev=>{ev.stopPropagation();cfDelPvF(f);});
+    t.onclick=()=>{A.prvFolder=f;rRep('');};bar.appendChild(t);
+  });
   const nb=document.createElement('button');nb.className='pvf-new';nb.innerHTML='<span style="display:block;line-height:1;position:relative;top:0">+</span>';nb.title='Nouveau dossier';nb.onclick=newPvF;bar.appendChild(nb);
+  if(!keys.length){const hint=document.createElement('span');hint.textContent='créer un dossier';hint.style.cssText='font-size:12px;color:#666;white-space:nowrap;pointer-events:none';bar.appendChild(hint);}
 }
 function newPvF(){sM('<h3>Nouveau dossier</h3><input class="fi" id="pvfni" placeholder="Nom du dossier" style="margin-bottom:12px"/><div class="ma"><button class="cc" onclick="cM()">annuler</button><button onclick="doNewPvF()">créer</button></div>');}
 function doNewPvF(){
@@ -939,7 +942,7 @@ function doDelGrid(){
   cancelEdit();
 }
 function cancelEdit(){go('ss');}
-function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,ly_a:A.ed.ly_a||null,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key)delete DB.s[A.grp][A.key];DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
+function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,ly_a:A.ed.ly_a||null,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode});if(newTitle!==A.key){delete DB.s[A.grp][A.key];if(inPrv()){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{const i=DB.pvf[u][f].indexOf(A.key);if(i!==-1){DB.pvf[u][f].splice(i,1);DB.pvf[u][f].push(newTitle);}});}}DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;document.getElementById('stf').textContent=newTitle;rSong();rRep('');go('ss');sDB();}
 function openPrefs(){
   // Construire la modale via DOM pour éviter les problèmes de guillemets
   const div=document.createElement('div');
