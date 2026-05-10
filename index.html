@@ -1801,18 +1801,23 @@ function renderLyA(container,lya,fontSize){
   wrap.style.cssText='font-size:'+(fontSize||A.lfs)+'px;line-height:3;word-break:break-word;color:var(--sc-txt,#111)';
   (lya||[]).forEach(item=>{
     if(item.type==='block'){
+      const box=document.createElement('div');
+      const _light=document.documentElement.classList.contains('light');
+      box.style.cssText='display:block;margin:16px 0 0;border-left:3px solid '+(A.lyaColor||'#e67e22')+';padding-left:10px;line-height:1';
       const bl=document.createElement('div');
-      bl.style.cssText='color:'+(A.lyaColor||'#e67e22')+';font-weight:700;font-style:italic;margin:16px 0 4px;font-size:.8em;display:block';
+      bl.style.cssText='color:'+(A.lyaColor||'#e67e22')+';font-weight:700;font-style:italic;font-size:.8em;padding:6px 10px';
       bl.textContent=item.text;
-      wrap.appendChild(bl);
+      box.appendChild(bl);
       if(item.grid&&item.grid.trim()){
+        const sep=document.createElement('div');sep.style.cssText='height:1px;background:'+(_light?'rgba(0,0,0,.15)':'rgba(255,255,255,.15)')+';margin:4px 0';box.appendChild(sep);
         const gr=document.createElement('div');
-        gr.style.cssText='font-family:monospace;font-weight:700;font-size:.9em;color:'+(A.lyaColor||'#e67e22')+';margin:0;white-space:pre-wrap;line-height:1';
+        gr.style.cssText='font-family:monospace;font-weight:700;font-size:.9em;color:'+(A.lyaColor||'#e67e22')+';padding:6px 10px;white-space:pre-wrap;line-height:1.4';
         let gridTxt=nrm(item.grid,A.lyaAlt);
         if(A.lyaSemi)gridTxt=trTxt(gridTxt,A.lyaSemi);
         gr.textContent=gridTxt;
-        wrap.appendChild(gr);
+        box.appendChild(gr);
       }
+      wrap.appendChild(box);
       const pull=document.createElement('div');pull.style.cssText='height:0;line-height:0;margin-bottom:-1em';wrap.appendChild(pull);
     }else if(item.newline){
       if(item.chord){
