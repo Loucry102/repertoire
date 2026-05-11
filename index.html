@@ -1909,7 +1909,8 @@ function renderLyAEditor(noScroll){
       if(item.grid&&item.grid.trim()){
         const _gs=document.createElement('span');
         _gs.style.cssText='display:block;font-family:monospace;font-style:normal;font-weight:700;font-size:1em;margin-top:6px;white-space:pre-wrap;color:'+(i===idx?'#fff':'#e67e22')+';';
-        _gs.textContent=item.grid;
+        let _gt=nrm(item.grid,A.lyaAlt);if(A.lyaSemi)_gt=trTxt(_gt,A.lyaSemi);
+        _gs.textContent=_gt;
         bl.appendChild(_gs);
       }
       bl.onclick=()=>{A._lyaIdx=i;renderLyAEditor();};
@@ -2199,7 +2200,7 @@ function trLyA(d){
   if(document.getElementById('ss')?.style.display==='flex'){
     rSong();
   }else{
-    renderLyAEditor();
+    renderLyAEditor(true);
   }
 }
 function apAltLya(v){
@@ -2250,7 +2251,10 @@ function lyaSave(){
   document.querySelectorAll('[data-blocbar]').forEach(el=>el.remove());
   // Si transpo active → on "cuit" la transposition dans les données brutes
   if(A.lyaSemi){
-    A._lyaEditing.forEach(item=>{if(item.chord)item.chord=lyaDispChord(item.chord);});
+    A._lyaEditing.forEach(item=>{
+      if(item.chord)item.chord=lyaDispChord(item.chord);
+      if(item.grid){let g=nrm(item.grid,A.lyaAlt);if(A.lyaSemi)g=trTxt(g,A.lyaSemi);item.grid=g;}
+    });
     A.lyaSemi=0;
     const td=document.getElementById('lya-td');if(td)td.textContent='0';
     const tdSs=document.getElementById('lya-ss-td');if(tdSs)tdSs.textContent='0';
