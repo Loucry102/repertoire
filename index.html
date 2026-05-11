@@ -1117,8 +1117,22 @@ document.addEventListener('touchstart',e=>{
   const target=e.touches[0]?.target||e.target;
   if(!_shouldCloseKb(target))return;
   if(_isNativeKbInput(target)){
-    // Délai pour que la fermeture du kbb coïncide avec l'ouverture du clavier natif
-    setTimeout(()=>kbHide(),180);
+    // Masquer kbb exactement quand le clavier natif commence à réduire le viewport
+    if(window.visualViewport){
+      const h0=window.visualViewport.height;
+      let done=false;
+      const onVpResize=()=>{
+        if(done)return;
+        if(window.visualViewport.height<h0-80){
+          done=true;window.visualViewport.removeEventListener('resize',onVpResize);kbHide();
+        }
+      };
+      window.visualViewport.addEventListener('resize',onVpResize);
+      // Fallback si visualViewport ne détecte rien (clavier déjà ouvert, etc.)
+      setTimeout(()=>{if(!done){done=true;window.visualViewport.removeEventListener('resize',onVpResize);kbHide();}},700);
+    }else{
+      setTimeout(()=>kbHide(),300);
+    }
   }else{
     kbHide();
   }
