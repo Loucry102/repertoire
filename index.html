@@ -1101,13 +1101,27 @@ function _shouldCloseKb(target){
   if(['BUTTON','SELECT','LABEL','A','INPUT','TEXTAREA'].includes(tag))return true;
   return false;
 }
+function _isNativeKbInput(el){
+  if(!el)return false;
+  const tag=el.tagName;
+  if(tag!=='INPUT'&&tag!=='TEXTAREA')return false;
+  const im=el.getAttribute('inputmode');
+  return !im||im!=='none';
+}
 document.addEventListener('mousedown',e=>{
   if(!_kbTa)return;
   if(_shouldCloseKb(e.target))kbHide();
 });
 document.addEventListener('touchstart',e=>{
   if(!_kbTa)return;
-  if(_shouldCloseKb(e.touches[0]?.target||e.target))kbHide();
+  const target=e.touches[0]?.target||e.target;
+  if(!_shouldCloseKb(target))return;
+  if(_isNativeKbInput(target)){
+    // Délai pour que la fermeture du kbb coïncide avec l'ouverture du clavier natif
+    setTimeout(()=>kbHide(),180);
+  }else{
+    kbHide();
+  }
 },{passive:true});
 
 // === Wake Lock : empêcher la mise en veille sur scène ===
