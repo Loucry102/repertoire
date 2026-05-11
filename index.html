@@ -1075,12 +1075,13 @@ if(window.visualViewport){
 }
 // Scroll universel : quand n'importe quel input/textarea reçoit le focus
 // on attend que le clavier soit ouvert puis on scrolle vers l'élément
+let _suppressFocusScroll=false;
 document.addEventListener('focus',e=>{
   const el=e.target;
   if(el.tagName!=='INPUT'&&el.tagName!=='TEXTAREA')return;
-  // Attendre que le clavier soit complètement ouvert (~400ms sur iOS)
+  if(_suppressFocusScroll)return;
   setTimeout(()=>{
-    el.scrollIntoView({behavior:'smooth',block:'center'});
+    if(!_suppressFocusScroll)el.scrollIntoView({behavior:'smooth',block:'center'});
   },400);
 },true);
 function _shouldCloseKb(target){
@@ -1117,22 +1118,11 @@ document.addEventListener('touchstart',e=>{
   const target=e.touches[0]?.target||e.target;
   if(!_shouldCloseKb(target))return;
   if(_isNativeKbInput(target)){
-    // Masquer kbb exactement quand le clavier natif commence à réduire le viewport
-    if(window.visualViewport){
-      const h0=window.visualViewport.height;
-      let done=false;
-      const onVpResize=()=>{
-        if(done)return;
-        if(window.visualViewport.height<h0-80){
-          done=true;window.visualViewport.removeEventListener('resize',onVpResize);kbHide();
-        }
-      };
-      window.visualViewport.addEventListener('resize',onVpResize);
-      // Fallback si visualViewport ne détecte rien (clavier déjà ouvert, etc.)
-      setTimeout(()=>{if(!done){done=true;window.visualViewport.removeEventListener('resize',onVpResize);kbHide();}},700);
-    }else{
-      setTimeout(()=>kbHide(),300);
-    }
+    // Supprimer le scrollIntoView automatique — le navigateur gère lui-même
+    // le scroll vers le champ quand son clavier natif s'ouvre
+    _suppressFocusScroll=true;
+    kbHide();
+    setTimeout(()=>{_suppressFocusScroll=false;},1200);
   }else{
     kbHide();
   }
