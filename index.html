@@ -2247,8 +2247,14 @@ function lyaPrev(){
 }
 function lyaSave(){
   kbHide();
-
   document.querySelectorAll('[data-blocbar]').forEach(el=>el.remove());
+  // Si transpo active → on "cuit" la transposition dans les données brutes
+  if(A.lyaSemi){
+    A._lyaEditing.forEach(item=>{if(item.chord)item.chord=lyaDispChord(item.chord);});
+    A.lyaSemi=0;
+    const td=document.getElementById('lya-td');if(td)td.textContent='0';
+    const tdSs=document.getElementById('lya-ss-td');if(tdSs)tdSs.textContent='0';
+  }
   A.sd.ly_a=JSON.parse(JSON.stringify(A._lyaEditing));
   const s=DB.s?.[A.grp]?.[A.key];
   if(s){s.ly_a=A.sd.ly_a;sDB();}
