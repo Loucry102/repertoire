@@ -1045,6 +1045,7 @@ function aMem(){const u=(document.getElementById('nu')?.value||'').trim(),p=(doc
 function tRole(u){DB.u[u].r=DB.u[u].r==='editor'?'reader':'editor';sDB();cM();openAdmin();}
 function dMem(u){delete DB.u[u];sDB();cM();openAdmin();}
 // Gestion clavier virtuel mobile pour le modal
+let _kbPosTimer=null;
 function _updateKbPos(){
   if(!window.visualViewport)return;
   const vv=window.visualViewport;
@@ -1052,26 +1053,30 @@ function _updateKbPos(){
   const mov=document.querySelector('.mov');
   if(!mov)return;
   if(kbHeight>50){
-    // Clavier ouvert : ancrer la modale en haut pour que les champs restent visibles
     mov.style.alignItems='flex-start';
     mov.style.paddingTop=Math.max(8,vv.offsetTop+8)+'px';
     mov.style.transform='';
-    // Scroller vers le champ actif à l'intérieur du .msh
-    const el=document.activeElement;
-    const msh=mov.querySelector('.msh');
-    if(el&&msh&&msh.contains(el)){
-      setTimeout(()=>el.scrollIntoView({block:'nearest',behavior:'smooth'}),120);
+    // scrollIntoView une seule fois par ouverture de clavier (pas sur chaque scroll)
+    if(!_kbPosTimer){
+      const el=document.activeElement;
+      const msh=mov.querySelector('.msh');
+      if(el&&msh&&msh.contains(el)){
+        _kbPosTimer=setTimeout(()=>{
+          el.scrollIntoView({block:'nearest',behavior:'instant'});
+          _kbPosTimer=null;
+        },150);
+      }
     }
   }else{
-    // Clavier fermé : restaurer le centrage vertical
     mov.style.alignItems='';
     mov.style.paddingTop='';
     mov.style.transform='';
+    if(_kbPosTimer){clearTimeout(_kbPosTimer);_kbPosTimer=null;}
   }
 }
 if(window.visualViewport){
+  // Seulement 'resize' (ouverture/fermeture clavier) — pas 'scroll' qui crée une boucle
   window.visualViewport.addEventListener('resize',_updateKbPos);
-  window.visualViewport.addEventListener('scroll',_updateKbPos);
 }
 // Scroll universel : quand n'importe quel input/textarea reçoit le focus
 // on attend que le clavier soit ouvert puis on scrolle vers l'élément
