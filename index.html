@@ -1913,7 +1913,7 @@ function renderLyAEditor(noScroll){
         _gs.textContent=_gt;
         bl.appendChild(_gs);
       }
-      bl.onclick=()=>{A._lyaIdx=i;renderLyAEditor();};
+      bl.onclick=()=>{A._lyaIdx=i;renderLyAEditor(true);};
       if(i===idx)activeEl=bl;
       preview.appendChild(bl);
     }else if(item.newline){
@@ -1934,7 +1934,7 @@ function renderLyAEditor(noScroll){
         const wasBloc=A._lyaEditing[A._lyaIdx]&&A._lyaEditing[A._lyaIdx].type==='block';
         A._lyaIdx=i;
         if(wasBloc){kbHide();document.querySelectorAll('[data-blocbar]').forEach(el=>el.remove());}
-        renderLyAEditor();
+        renderLyAEditor(true);
       };
       if(isActive)activeEl=wd;
       preview.appendChild(wd);
@@ -1954,7 +1954,7 @@ function renderLyAEditor(noScroll){
         A._lyaIdx=i;
         kbHide(); // Toujours fermer kbb pour laisser place au clavier simplifié
         document.querySelectorAll('[data-blocbar]').forEach(el=>el.remove());
-        renderLyAEditor();
+        renderLyAEditor(true);
       };
       if(isActive)activeEl=wd;
       preview.appendChild(wd);
@@ -2053,10 +2053,10 @@ function renderLyAEditor(noScroll){
         let gs=bl.querySelectorAll('span')[1];
         if(!gs&&curItem.grid.trim()){
           gs=document.createElement('span');
-          gs.style.cssText='display:block;font-family:monospace;font-style:normal;font-weight:700;font-size:0.85em;margin-top:4px;white-space:pre-wrap';
+          gs.style.cssText='display:block;font-family:monospace;font-style:normal;font-weight:700;font-size:0.85em;margin-top:4px;white-space:pre-wrap;color:#fff';
           bl.appendChild(gs);
         }
-        if(gs){gs.textContent=curItem.grid;gs.style.color='#e67e22';}
+        if(gs){gs.textContent=curItem.grid;gs.style.color='#fff';}
       }
     };
     gridTa.addEventListener('focus',()=>kbShow(gridTa));
@@ -2096,7 +2096,7 @@ function renderLyAEditor(noScroll){
     chordInp.placeholder='accord…';
     chordInp.style.cssText='flex:1;min-width:0;font-size:16px;font-weight:700;color:'+(A.lyaColor||'#e67e22')+';background:#222;border:1.5px solid #444;border-radius:8px;padding:6px 10px;outline:none;caret-color:'+(A.lyaColor||'#e67e22');
     chordInp.addEventListener('input',()=>{if(curItem)curItem.chord=chordInp.value||null;const d=document.getElementById('lya-chord-display');if(d)d.textContent=lyaDispChord(chordInp.value)||'';});
-    const _ns=el=>{el.addEventListener('mousedown',e=>{e.preventDefault();_tap(el);});el.addEventListener('touchstart',e=>{e.preventDefault();_tap(el);el.click();_refocus();},{passive:false});return el;};
+    const _ns=el=>{el.addEventListener('mousedown',e=>{e.preventDefault();_tap(el);});el.addEventListener('touchstart',e=>{e.preventDefault();_tap(el);el.click();_refocus();},{passive:false});el.addEventListener('contextmenu',e=>e.preventDefault());return el;};
     const blockBtn=_ns(mk('button','flex-shrink:0;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;background:#555!important;color:#fff!important','+ Bloc',()=>{
       let insertAt=idx;
       while(insertAt>0&&!(lya[insertAt-1]&&lya[insertAt-1].newline))insertAt--;
@@ -2110,7 +2110,7 @@ function renderLyAEditor(noScroll){
 
   // ── Clavier simplifié (seulement si mot actif, pas bloc) ──
   if(!isBloc){
-    const noSteal=el=>{el.addEventListener('mousedown',e=>{e.preventDefault();_tap(el);});el.addEventListener('touchstart',e=>{e.preventDefault();_tap(el);el.click();_refocus();},{passive:false});return el;};
+    const noSteal=el=>{el.addEventListener('mousedown',e=>{e.preventDefault();_tap(el);});el.addEventListener('touchstart',e=>{e.preventDefault();_tap(el);el.click();_refocus();},{passive:false});el.addEventListener('contextmenu',e=>e.preventDefault());return el;};
     const kbZone=document.createElement('div');
     kbZone.style.cssText='flex-shrink:0;background:#111;border-top:1px solid #222;padding:6px;display:flex;flex-direction:column;gap:5px';
     const r1=document.createElement('div');r1.style.cssText='display:flex;gap:4px';
@@ -2283,7 +2283,7 @@ function openLyAEditorScreen(){
 const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
-<div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333">
+<div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333" oncontextmenu="return false">
   <!-- Rangée 1 : Qualités -->
   <div style="display:flex;width:100%;gap:5px;margin-bottom:5px">
     <button onmousedown="event.preventDefault()" onclick="kbIns('m')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m</button>
