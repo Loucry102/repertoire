@@ -1974,7 +1974,7 @@ function renderLyAEditor(noScroll){
 
   // ── Barre du bas ──
   const _refocus=()=>{setTimeout(()=>{const i=document.getElementById('lya-chord-inp');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},20);};
-  const _tap=el=>{el.classList.remove('kb-tap');void el.offsetWidth;el.classList.add('kb-tap');el.addEventListener('animationend',()=>el.classList.remove('kb-tap'),{once:true});try{(navigator.vibrate||navigator.webkitVibrate||function(){}).call(navigator,15);}catch(e){}};
+  const _tap=el=>{el.classList.remove('kb-tap');void el.offsetWidth;el.classList.add('kb-tap');el.addEventListener('animationend',()=>el.classList.remove('kb-tap'),{once:true});try{if(navigator.vibrate)navigator.vibrate(30);}catch(e){}};
   const bar=document.createElement('div');
 
   if(isBloc){
