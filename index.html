@@ -2183,6 +2183,8 @@ function lyaKbIns(str){
     inp.selectionStart=inp.selectionEnd=s+str.length;
     curItem.chord=inp.value||null;
     inp.size=Math.max(1,inp.value.length+2);
+    const ir=inp.getBoundingClientRect();
+    if(ir.right>window.innerWidth-8){inp.style.left='auto';inp.style.right='8px';}
     return;
   }
   curItem.chord=(curItem.chord||'')+str;
