@@ -26,7 +26,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:#0a0a0a;font-family:
 .scr{display:none;flex-direction:column;position:absolute;inset:0;overflow:hidden}
 .scr.on{display:flex;z-index:10}
 button{background:#fff!important;color:#111!important;border:none;border-radius:12px;font-family:inherit;cursor:pointer;font-weight:600;font-size:15px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:opacity .12s,transform .1s}
-#kbb button{border-radius:0!important;font-family:inherit!important;transition:none}
+#kbb button{font-family:inherit!important;transition:none}
 button:active{opacity:.65!important;transform:scale(.96)}
 #kbb button:active{opacity:.65!important;transform:none}
 input,textarea,select{font-family:inherit;color:#111;background:#f5f5f5;border:1.5px solid #ddd;border-radius:12px;outline:none;font-size:16px;-webkit-appearance:none}
@@ -413,7 +413,7 @@ async function uploadImg(file){
   return(await r.json()).secure_url;
 }
 let A={ins:'chords',prvFolder:null,showLya:false,lyaSemi:0,lyaAlt:'sharp',lyaColor:'#e67e22',grp:'',key:'',tab:'chords',semi:0,viewMode:'text',instMode:'guitar',pins:'guitar',_clipboard:null,_edInst:'guitar',slMode:false,slCtx:{grp:'',id:'',idx:0},_slScroll:0,sd:{type:'text',secs:[],lyr:'',imgs:[],tun:'E',tkey:'',mode:'Majeur'},et:'chords',ed:{},edSemi:0,edTitle:'',lfs:44,cfs:44,imgScale:1,alt:'sharp',theme:'dark',usr:null,nc:'#e74c3c',ptun:'E',psecs:[],pimgs:[]};
-const LS={alt:u=>'alt_'+u,theme:u=>'theme_'+u,zoom:u=>'zoom_'+u,lya:u=>'lya_'+u,lyaColor:u=>'lya_color_'+u,sess:'sc_s'};
+const LS={alt:u=>'alt_'+u,theme:u=>'theme_'+u,zoom:u=>'zoom_'+u,lya:u=>'lya_'+u,lyaColor:u=>'lya_color_'+u,sess:'sc_s',prvDelWarn:u=>'prv_del_warn_'+u};
 function getAlt(){return A.usr?localStorage.getItem(LS.alt(A.usr.n))||'sharp':'sharp';}
 function getLya(){return A.usr?localStorage.getItem(LS.lya(A.usr.n))==='1':false;}
 function setLya(v){if(A.usr)localStorage.setItem(LS.lya(A.usr.n),v?'1':'0');A.showLya=!!v;}
@@ -715,14 +715,50 @@ function doCTpvf(nm,folder){
   sM('<h3>✓ Copié !</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+nm+'" → Mon espace / '+folder+'</p><div class="ma"><button onclick="cM()">OK</button></div>');
 }
 // ── Fin dossiers ────────────────────────────────────────────────────
-function cfDel(nm){cDD();sM('<h3>Supprimer ?</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+nm+'"</p><div class="ma"><button class="cc" onclick="cM()">non</button><button class="dl" onclick="doDel(\''+e(nm)+'\')">oui</button></div>');}
+function cfDel(nm){
+  cDD();
+  if(inPrv()&&!localStorage.getItem(LS.prvDelWarn(A.usr?.n))){
+    sM('<h3>⚠️ Suppression</h3>'
+      +'<p style="color:#333;font-size:15px;line-height:1.5;margin-bottom:16px">Ce morceau sera supprimé de Mon espace et retiré automatiquement de tous les dossiers dans lesquels il se trouve.</p>'
+      +'<input type="checkbox" id="prv-del-skip" style="display:none">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;cursor:pointer" onclick="prvDelToggle()">'
+      +'<div id="prv-del-cb" style="width:26px;height:26px;border-radius:7px;border:2px solid #ccc;background:#f5f5f5;display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>'
+      +'<span style="color:#555;font-size:14px">ne plus afficher ce message</span>'
+      +'</div>'
+      +'<div class="ma"><button onclick="cM()" style="background:#fff!important;border:2px solid #111!important;color:#111!important">annuler</button><button onclick="cfDelConfirm(\''+e(nm)+'\')" style="background:#e67e22!important;border:2px solid #111!important;color:#fff!important">Compris</button></div>');
+  }else{
+    _cfDelConfirm(nm);
+  }
+}
+function cfDelConfirm(nm){
+  if(document.getElementById('prv-del-skip')?.checked)localStorage.setItem(LS.prvDelWarn(A.usr?.n),'1');
+  _cfDelConfirm(nm);
+}
+function prvDelToggle(){
+  const cb=document.getElementById('prv-del-skip');
+  const btn=document.getElementById('prv-del-cb');
+  if(!cb||!btn)return;
+  cb.checked=!cb.checked;
+  if(cb.checked){
+    btn.style.background='#27ae60';
+    btn.style.borderColor='#27ae60';
+    btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  }else{
+    btn.style.background='#f5f5f5';
+    btn.style.borderColor='#ccc';
+    btn.innerHTML='';
+  }
+}
+function _cfDelConfirm(nm){
+  sM('<h3>Supprimer ?</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+nm+'"</p><div class="ma"><button class="cc" onclick="cM()">non</button><button class="dl" onclick="doDel(\''+e(nm)+'\')">oui</button></div>');
+}
 function doDel(nm){
   if(DB.s?.[A.grp])delete DB.s[A.grp][nm];
   if(inPrv()){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{DB.pvf[u][f]=DB.pvf[u][f].filter(s=>s!==nm);});}
   sDB();cM();rRep('');
 }
 function pubChoice(){pubTxt();}
-function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom</label><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Instrument</label><div class="sr"><button class="tn" id="pig">Guitare</button><button class="tn off" id="pib">Basse</button></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><label class="fl">Images (optionnel)</label><div id="ptimgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div><div class="ua" onclick="document.getElementById(\'ptimf\').click()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 4px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="ptimf" accept="image/*" style="display:none" onchange="prvImgTxt(this)"/><div class="ma"><button class="cc" onclick="cM()">annuler</button><button onclick="doPubTxt()">publier</button></div>');
+function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom</label><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Instrument</label><div class="sr"><button class="tn" id="pig">Guitare</button><button class="tn off" id="pib">Basse</button></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><label class="fl">Images (optionnel)</label><div id="ptimgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div><div class="ua" onclick="document.getElementById(\'ptimf\').click()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 4px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="ptimf" accept="image/*" style="display:none" onchange="prvImgTxt(this)"/><div class="ma"><button onclick="cM()" style="background:#fff!important;border:2px solid #111!important;color:#111!important">annuler</button><button onclick="doPubTxt()" style="background:#e67e22!important;border:2px solid #111!important;color:#fff!important">publier</button></div>');
   A.pins='guitar';
   const _pig=document.getElementById('pig'),_pib=document.getElementById('pib');
   if(_pig)_pig.onclick=()=>sPInst('guitar');
@@ -741,7 +777,7 @@ function doPubTxt(){capSF();const nm=(document.getElementById('pn')?.value||'').
   if(A.pins==='bass'){DB.s[A.grp][nm].sb=_secs;if(!DB.s[A.grp][nm].sg)DB.s[A.grp][nm].sg=[];}
   else{DB.s[A.grp][nm].sg=_secs;if(!DB.s[A.grp][nm].sb)DB.s[A.grp][nm].sb=[];}
   _applyPrvFolder(nm);_addHistory('publié',nm);sDB();cM();rRep('');}
-function pubImg(){A.pimgs=[];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau — image</h3><label class="fl">Nom</label><input class="fi" id="pin" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pie" onclick="sPTI(\'E\')">E standard</button><button class="tn off" id="pid" onclick="sPTI(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pik" style="flex:1">'+ko+'</select><select class="fi" id="pim" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Images de la grille</label><div id="pimglist" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div><div class="ua" onclick="document.getElementById(\'imf\').click()"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 8px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="imf" accept="image/*" style="display:none" onchange="prvImg(this)"/><label class="fl">Paroles</label><textarea class="fta" id="pil" placeholder="Couplet 1..."></textarea><div class="ma"><button class="cc" onclick="pubChoice()">← retour</button><button onclick="doPubImg()">publier</button></div>');}
+function pubImg(){A.pimgs=[];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau — image</h3><label class="fl">Nom</label><input class="fi" id="pin" placeholder="ex: Highway to Hell" type="text"/><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pie" onclick="sPTI(\'E\')">E standard</button><button class="tn off" id="pid" onclick="sPTI(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pik" style="flex:1">'+ko+'</select><select class="fi" id="pim" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Images de la grille</label><div id="pimglist" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div><div class="ua" onclick="document.getElementById(\'imf\').click()"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 8px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="imf" accept="image/*" style="display:none" onchange="prvImg(this)"/><label class="fl">Paroles</label><textarea class="fta" id="pil" placeholder="Couplet 1..."></textarea><div class="ma"><button onclick="pubChoice()" style="background:#fff!important;border:2px solid #111!important;color:#111!important">← retour</button><button onclick="doPubImg()" style="background:#e67e22!important;border:2px solid #111!important;color:#fff!important">publier</button></div>');}
 function sPTI(t){A.ptun=t;const pe=document.getElementById('pie'),pd=document.getElementById('pid');if(pe)pe.className='tn'+(t==='D'?' off':'');if(pd)pd.className='tn'+(t==='E'?' off':'');}
 async function prvImgTxt(inp){
   if(!inp.files?.[0])return;
@@ -2244,17 +2280,17 @@ function renderLyAEditor(noScroll){
     kbZone.style.cssText='flex-shrink:0;background:#111;border-top:1px solid #222;padding:6px;display:flex;flex-direction:column;gap:5px';
     const r1=document.createElement('div');r1.style.cssText='display:flex;gap:4px';
     ['m','7','maj7','m7','sus2','sus4','dim','aug'].forEach(q=>{
-      r1.appendChild(_lyaNs(mk('button','flex:1;height:52px;font-size:13px;border-radius:8px;background:#1e1e1e!important;color:#aaa!important;padding:0',q,()=>lyaKbIns(q))));
+      r1.appendChild(_lyaNs(mk('button','flex:1;height:52px;font-size:13px;border-radius:10px;background:#1e1e1e!important;color:#aaa!important;padding:0',q,()=>lyaKbIns(q))));
     });
     const r2=document.createElement('div');r2.style.cssText='display:flex;gap:4px';
     ['A','B','C','D','E','F','G'].forEach(n=>{
-      r2.appendChild(_lyaNs(mk('button','flex:1;height:62px;font-size:24px;font-weight:700;border-radius:8px;background:#252525!important;color:#fff!important;padding:0',n,()=>lyaKbIns(n))));
+      r2.appendChild(_lyaNs(mk('button','flex:1;height:62px;font-size:24px;font-weight:700;border-radius:12px;background:#252525!important;color:#fff!important;padding:0',n,()=>lyaKbIns(n))));
     });
     ['♯','♭'].forEach((n,i)=>{
-      r2.appendChild(_lyaNs(mk('button','flex:1;height:62px;font-size:18px;font-weight:700;border-radius:8px;background:#1e2e1e!important;color:#27ae60!important;padding:0',n,()=>lyaKbIns(i===0?'#':'b'))));
+      r2.appendChild(_lyaNs(mk('button','flex:1;height:62px;font-size:18px;font-weight:700;border-radius:12px;background:#1e2e1e!important;color:#27ae60!important;padding:0',n,()=>lyaKbIns(i===0?'#':'b'))));
     });
     const r3=document.createElement('div');r3.style.cssText='display:flex;gap:4px';
-    r3.appendChild(_lyaNs(mk('button','flex:2;height:56px;font-size:22px;border-radius:8px;background:#2d1515!important;color:#e74c3c!important;padding:0','⌫',()=>{
+    r3.appendChild(_lyaNs(mk('button','flex:2;height:56px;font-size:22px;border-radius:12px;background:#2d1515!important;color:#e74c3c!important;padding:0','⌫',()=>{
       if(!curItem||curItem.type==='block')return;
       const inp2=document.getElementById('lya-chord-inp');
       if(inp2){
@@ -2270,8 +2306,8 @@ function renderLyAEditor(noScroll){
       if(v.length>0){curItem.chord=v.slice(0,-1)||null;}
       renderLyAEditor(true);
     })));
-    r3.appendChild(_lyaNs(mk('button','flex:3;height:56px;font-size:14px;border-radius:8px;background:#e67e22!important;color:#fff!important;padding:0','espace',()=>{lyaKbIns(' ');})));
-    r3.appendChild(_lyaNs(mk('button','flex:3;height:56px;font-size:14px;border-radius:8px;background:#3a3a3a!important;color:#ccc!important;padding:0','mot suivant →',lyaNext)));
+    r3.appendChild(_lyaNs(mk('button','flex:3;height:56px;font-size:14px;border-radius:12px;background:#e67e22!important;color:#fff!important;padding:0','espace',()=>{lyaKbIns(' ');})));
+    r3.appendChild(_lyaNs(mk('button','flex:3;height:56px;font-size:14px;border-radius:12px;background:#3a3a3a!important;color:#ccc!important;padding:0','mot suivant →',lyaNext)));
     kbZone.appendChild(r1);kbZone.appendChild(r2);kbZone.appendChild(r3);
     const safe=document.createElement('div');safe.style.cssText='height:max(env(safe-area-inset-bottom,0px),4px);background:#111';
     kbZone.appendChild(safe);
@@ -2409,46 +2445,46 @@ function openLyAEditorScreen(){
   document.getElementById('lya-td').textContent='0';
   setTimeout(renderLyAEditor,50);
 }
-const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
+const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333" oncontextmenu="return false">
   <!-- Rangée 1 : Qualités -->
   <div style="display:flex;width:100%;gap:5px;margin-bottom:5px">
-    <button onmousedown="event.preventDefault()" onclick="kbIns('m')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('maj7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">maj7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('m7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:13px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('sus2')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus2</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('sus4')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus4</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('dim')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">dim</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('aug')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">aug</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('add9')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">add9</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('m')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">7</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('maj7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">maj7</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('m7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:13px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m7</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('sus2')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus2</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('sus4')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus4</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('dim')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">dim</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('aug')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">aug</button>
+    <button onmousedown="event.preventDefault()" onclick="kbDel()" style="flex:1;height:72px;background:#2d1515!important;color:#e74c3c!important;font-size:22px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">⌫</button>
   </div>
   <!-- Rangée 2 : Notes -->
   <div style="display:flex;width:100%;gap:5px;margin-bottom:5px">
-    <button onmousedown="event.preventDefault()" onclick="kbIns('A')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">A</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('B')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">B</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('C')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">C</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('D')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">D</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('E')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">E</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('F')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">F</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('G')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">G</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('#')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♯</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('b')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♭</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('A')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">A</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('B')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">B</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('C')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">C</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('D')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">D</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('E')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">E</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('F')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">F</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('G')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">G</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('#')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♯</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('b')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♭</button>
   </div>
   <!-- Rangée 3 : Séparateurs + actions -->
   <div style="display:flex;width:100%;gap:5px">
-    <button onmousedown="event.preventDefault()" onclick="kbIns('[:')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:18px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">[:</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns(':]')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:18px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">:]</button>
-    <button onmousedown="event.preventDefault()" onclick="kbRepeat()" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:15px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">x?</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns(' | ')" style="flex:5;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:30px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">|</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns(' || ')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:14px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">||</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('-')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:22px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">-</button>
-    <button onmousedown="event.preventDefault()" onclick="document.getElementById('lya-editor')?document.getElementById('slya')?.style.display==='flex'?lyaNext():kbIns(' '):kbIns(' ')" style="flex:3;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">espace</button>
-    <button onmousedown="event.preventDefault()" onclick="kbNewLine()" style="flex:2;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:22px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">↵</button>
-    <button onmousedown="event.preventDefault()" onclick="kbDel()" style="flex:2;height:76px;background:#2d1515!important;color:#e74c3c!important;font-size:24px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">⌫</button>
-    <button onmousedown="event.preventDefault()" onclick="kbHide();if(_kbTa)_kbTa.blur()" style="flex:2;height:76px;background:#222!important;color:#888!important;font-size:18px;cursor:pointer;padding:0;border:none;border-radius:9px;box-shadow:0 3px 0 rgba(0,0,0,.5)">⌨️</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('[:')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:18px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">[:</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns(':]')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:18px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">:]</button>
+    <button onmousedown="event.preventDefault()" onclick="kbRepeat()" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:15px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">x?</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns(' | ')" style="flex:5;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:30px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">|</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns(' || ')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:14px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">||</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('-')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:22px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">-</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('/')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:22px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">/</button>
+    <button onmousedown="event.preventDefault()" onclick="document.getElementById('lya-editor')?document.getElementById('slya')?.style.display==='flex'?lyaNext():kbIns(' '):kbIns(' ')" style="flex:3;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">espace</button>
+    <button onmousedown="event.preventDefault()" onclick="kbNewLine()" style="flex:2;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:22px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">↵</button>
+    <button onmousedown="event.preventDefault()" onclick="kbHide();if(_kbTa)_kbTa.blur()" style="flex:2;height:76px;background:#222!important;color:#888!important;font-size:18px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">⌨️</button>
   </div>
   <div style="height:60px;background:#111;margin:0 -4px;border-top:2px solid #1a1a1a"></div>
 </div>
