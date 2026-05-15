@@ -2130,7 +2130,7 @@ function renderLyAEditor(noScroll){
     }
   });
   body.appendChild(preview);
-  if(!noScroll&&activeEl)setTimeout(()=>activeEl.scrollIntoView({block:'center',behavior:'smooth'}),60);else if(noScroll){const _np=document.getElementById('lya-preview');if(_np)_np.scrollTop=_savedScroll;}
+  if(!noScroll&&activeEl){setTimeout(()=>activeEl.scrollIntoView({block:'center',behavior:'smooth'}),60);}else if(noScroll){const _np=document.getElementById('lya-preview');if(_np){_np.scrollTop=_savedScroll;requestAnimationFrame(()=>{if(_np)_np.scrollTop=_savedScroll;});}}
   // Clic sur le fond du preview → quitter le mode bloc si actif
   preview.addEventListener('click',e=>{
     if(e.target===preview&&isBloc){kbHide();renderLyAEditor();}
@@ -2365,7 +2365,9 @@ function trLyA(d){
   if(document.getElementById('ss')?.style.display==='flex'){
     rSong();
   }else{
+    _suppressFocusScroll=true;
     renderLyAEditor(true);
+    setTimeout(()=>{_suppressFocusScroll=false;},600);
   }
 }
 function apAltLya(v){
