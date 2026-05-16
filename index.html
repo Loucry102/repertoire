@@ -506,7 +506,85 @@ function doGS(q){
 }
 let cdd=null;
 function cDD(){if(cdd){cdd.remove();cdd=null;}}
-function tDD(btn,nm){if(cdd){cDD();return;}const d=document.createElement('div');d.className='dd';const mvBtn=inPrv()&&Object.keys(getPvF()).length?'<button class="di" onclick="mvPvF(\''+e(nm)+'\')">déplacer dans…</button><div class="ds"></div>':'';const sendBtn=inPrv()?'<button class="di" onclick="oSendToUser(\''+e(nm)+'\')">envoyer à…</button><div class="ds"></div>':'';d.innerHTML='<button class="di" onclick="oCT(\''+e(nm)+'\')">copier vers…</button><div class="ds"></div>'+mvBtn+sendBtn+'<button class="di danger" onclick="cfDel(\''+e(nm)+'\')">supprimer</button>';btn.style.position='relative';btn.appendChild(d);cdd=d;setTimeout(()=>{document.addEventListener('click',function cl(ev){if(!d.contains(ev.target)&&ev.target!==btn){cDD();document.removeEventListener('click',cl);}});},10);}
+function tDD(btn,nm){if(cdd){cDD();return;}const d=document.createElement('div');d.className='dd';const mvBtn=inPrv()&&Object.keys(getPvF()).length?'<button class="di" onclick="mvPvF(\''+e(nm)+'\')">déplacer dans…</button><div class="ds"></div>':'';const sendBtn=inPrv()?'<button class="di" onclick="oSendToUser(\''+e(nm)+'\')">envoyer à…</button><div class="ds"></div>':'';d.innerHTML='<button class="di" onclick="oCT(\''+e(nm)+'\')">copier vers…</button><div class="ds"></div>'+mvBtn+sendBtn+'<button class="di" onclick="openPdfExport(\''+e(nm)+'\')">exporter en PDF…</button><div class="ds"></div><button class="di danger" onclick="cfDel(\''+e(nm)+'\')">supprimer</button>';btn.style.position='relative';btn.appendChild(d);cdd=d;setTimeout(()=>{document.addEventListener('click',function cl(ev){if(!d.contains(ev.target)&&ev.target!==btn){cDD();document.removeEventListener('click',cl);}});},10);}
+function openPdfExport(nm){
+  cDD();
+  const s=DB.s?.[A.grp]?.[nm];if(!s)return;
+  const opts=[];
+  if(s.sg?.length)opts.push({label:'🎸 Grille Guitare',key:'sg'});
+  if(s.sb?.length)opts.push({label:'🎸 Grille Basse',key:'sb'});
+  if(s.ly?.trim())opts.push({label:'📝 Paroles',key:'ly'});
+  if(s.ly_a?.some(it=>it.chord||it.word))opts.push({label:'🎵 Accords + Paroles',key:'lya'});
+  if(!opts.length){sM('<h3>Rien à exporter</h3><p style="color:#666;font-size:14px;margin-bottom:16px">Ce morceau ne contient pas encore de contenu exportable.</p><div class="ma"><button onclick="cM()">OK</button></div>');return;}
+  const btns=opts.map(o=>'<button class="bc" onclick="doPdfExport(\''+e(nm)+'\',\''+o.key+'\')" style="justify-content:flex-start;gap:10px">'+o.label+'</button>').join('');
+  sM('<h3>📄 Exporter en PDF</h3><p style="color:#666;font-size:13px;margin-bottom:14px">Choisissez ce que vous souhaitez exporter :</p>'+btns+'<div class="ma" style="margin-top:14px"><button class="cc" onclick="cM()">annuler</button></div>');
+}
+function _renderLyAForPrint(lya){
+  let html='<div style="font-size:15px;line-height:3;word-break:break-word;font-family:monospace">';
+  (lya||[]).forEach(item=>{
+    if(item.type==='block'){
+      html+='<div style="display:block;color:#c0392b;font-weight:700;font-style:italic;font-size:13px;margin:20px 0 6px;border-left:3px solid #c0392b;padding-left:8px">'+item.text+'</div>';
+      if(item.grid?.trim())html+='<pre style="font-family:monospace;font-weight:700;font-size:14px;white-space:pre-wrap;margin:0 0 8px 11px;color:#333">'+item.grid+'</pre>';
+    }else if(item.newline){
+      html+='<br style="display:block;margin-bottom:4px"/>';
+      if(item.chord)html+='<span style="display:inline-block;position:relative;margin:0 2px 8px;padding:0 2px"><span style="position:absolute;top:-20px;left:0;color:#c0392b;font-weight:700;font-size:13px;white-space:nowrap">'+item.chord+'</span>↵</span>';
+    }else{
+      html+='<span style="display:inline-block;position:relative;margin:0 2px 8px;padding:0 2px">'+(item.chord?'<span style="position:absolute;top:-20px;left:0;color:#c0392b;font-weight:700;font-size:13px;white-space:nowrap">'+item.chord+'</span>':'')+(item.word||'')+'</span>';
+    }
+  });
+  return html+'</div>';
+}
+function doPdfExport(nm,type){
+  cM();
+  const s=DB.s?.[A.grp]?.[nm];if(!s)return;
+  const note=type==='sb'?(s.nb||''):(s.ng||'');
+  const title=nm+(note?' ('+note+')':'');
+  const keyStr=s.k?(s.k+' '+(s.m||'')):'';
+  const tunStr=s.t&&s.t!=='E'?'Accordage '+s.t:'E standard';
+  const metaParts=[keyStr,tunStr].filter(Boolean);
+  let content='';
+  if(type==='sg'||type==='sb'){
+    const secs=(type==='sg'?s.sg:s.sb)||[];
+    content=secs.map(sec=>'<div style="margin-bottom:28px;break-inside:avoid"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#c0392b;border-bottom:2px solid #c0392b;padding-bottom:4px;margin-bottom:10px">'+(sec.n||'Section')+'</div><pre style="font-family:monospace;font-size:17px;font-weight:700;white-space:pre-wrap;margin:0;line-height:1.9;color:#111">'+(sec.c||'')+'</pre></div>').join('');
+  }else if(type==='ly'){
+    content='<pre style="font-family:inherit;font-size:15px;white-space:pre-wrap;line-height:1.9;color:#111;margin:0">'+(s.ly||'')+'</pre>';
+  }else if(type==='lya'){
+    content=_renderLyAForPrint(s.ly_a);
+  }
+  const old=document.getElementById('_pdf-overlay');if(old)old.remove();
+  const oldSt=document.getElementById('_pdf-print-style');if(oldSt)oldSt.remove();
+  const st=document.createElement('style');st.id='_pdf-print-style';
+  st.textContent=
+    '#_pdf-overlay{position:fixed;inset:0;background:#fff;z-index:99999;display:flex;flex-direction:column;overflow:hidden}'
+    +'#_pdf-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f5f5f5;border-bottom:1px solid #ddd;flex-shrink:0}'
+    +'#_pdf-body{flex:1;overflow-y:auto;padding:40px 36px;color:#111;font-family:Georgia,serif}'
+    +'@media print{#_pdf-bar{display:none!important}#_pdf-body{overflow:visible!important;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    +'@page{margin:15mm}';
+  document.head.appendChild(st);
+  const cleanup=()=>{document.getElementById('_pdf-overlay')?.remove();document.getElementById('_pdf-print-style')?.remove();};
+  const ov=document.createElement('div');ov.id='_pdf-overlay';
+  const bar=document.createElement('div');bar.id='_pdf-bar';
+  const btnPrint=document.createElement('button');
+  btnPrint.textContent='🖨️ Imprimer';
+  btnPrint.style.cssText='background:#e67e22!important;color:#fff!important;border:none!important;border-radius:10px;padding:8px 18px;font-size:14px;font-weight:700;flex-shrink:0';
+  btnPrint.addEventListener('click',()=>window.print());
+  const btnClose=document.createElement('button');
+  btnClose.textContent='✕ Fermer';
+  btnClose.style.cssText='background:#e0e0e0!important;color:#111!important;border:none!important;border-radius:10px;padding:8px 14px;font-size:14px;flex-shrink:0';
+  btnClose.addEventListener('click',cleanup);
+  const titleSpan=document.createElement('span');
+  titleSpan.textContent=title;
+  titleSpan.style.cssText='font-weight:700;font-size:15px;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+  const hint=document.createElement('span');
+  hint.textContent='💡 Choisir "Print to PDF" pour enregistrer sans imprimer';
+  hint.style.cssText='font-size:11px;color:#999;flex:1;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px';
+  bar.appendChild(titleSpan);bar.appendChild(hint);bar.appendChild(btnPrint);bar.appendChild(btnClose);
+  const body=document.createElement('div');body.id='_pdf-body';
+  body.innerHTML='<h1 style="font-size:28px;font-weight:800;margin:0 0 6px;font-family:sans-serif">'+title+'</h1><p style="font-size:13px;color:#888;margin:0 0 28px;font-family:sans-serif">'+metaParts.join(' · ')+'</p>'+content;
+  ov.appendChild(bar);ov.appendChild(body);
+  document.body.appendChild(ov);
+  window.addEventListener('afterprint',cleanup,{once:true});
+}
 function _addHistory(action,song){
   if(!A.usr?.n)return;
   if(inPrv())return;
@@ -2468,7 +2546,7 @@ function openLyAEditorScreen(){
   document.getElementById('lya-td').textContent='0';
   setTimeout(renderLyAEditor,50);
 }
-const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
+const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333" oncontextmenu="return false">
