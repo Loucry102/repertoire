@@ -511,7 +511,7 @@ function openPdfExport(nm){
   cDD();
   const s=DB.s?.[A.grp]?.[nm];if(!s)return;
   const opts=[];
-  if(s.sg?.length)opts.push({label:'🎸 Grille Guitare',key:'sg'});
+  if((s.sg||s.sc)?.length)opts.push({label:'🎸 Grille Guitare',key:'sg'});
   if(s.sb?.length)opts.push({label:'🎸 Grille Basse',key:'sb'});
   if(s.ly?.trim())opts.push({label:'📝 Paroles',key:'ly'});
   if(s.ly_a?.some(it=>it.chord||it.word))opts.push({label:'🎵 Accords + Paroles',key:'lya'});
@@ -520,19 +520,126 @@ function openPdfExport(nm){
   sM('<h3>📄 Exporter en PDF</h3><p style="color:#666;font-size:13px;margin-bottom:14px">Choisissez ce que vous souhaitez exporter :</p>'+btns+'<div class="ma" style="margin-top:14px"><button class="cc" onclick="cM()">annuler</button></div>');
 }
 function _renderLyAForPrint(lya){
-  let html='<div style="font-size:15px;line-height:3;word-break:break-word;font-family:monospace">';
+  // Grouper les items en lignes visuelles
+  const lines=[];let cur=[];
   (lya||[]).forEach(item=>{
     if(item.type==='block'){
-      html+='<div style="display:block;color:#c0392b;font-weight:700;font-style:italic;font-size:13px;margin:20px 0 6px;border-left:3px solid #c0392b;padding-left:8px">'+item.text+'</div>';
-      if(item.grid?.trim())html+='<pre style="font-family:monospace;font-weight:700;font-size:14px;white-space:pre-wrap;margin:0 0 8px 11px;color:#333">'+item.grid+'</pre>';
+      if(cur.length){lines.push({t:'w',items:cur});cur=[];}
+      lines.push({t:'b',text:item.text,grid:item.grid});
     }else if(item.newline){
-      html+='<br style="display:block;margin-bottom:4px"/>';
-      if(item.chord)html+='<span style="display:inline-block;position:relative;margin:0 2px 8px;padding:0 2px"><span style="position:absolute;top:-20px;left:0;color:#c0392b;font-weight:700;font-size:13px;white-space:nowrap">'+item.chord+'</span>↵</span>';
+      lines.push({t:'w',items:cur});cur=[];
+      if(item.chord)cur.push({chord:item.chord,word:''});
     }else{
-      html+='<span style="display:inline-block;position:relative;margin:0 2px 8px;padding:0 2px">'+(item.chord?'<span style="position:absolute;top:-20px;left:0;color:#c0392b;font-weight:700;font-size:13px;white-space:nowrap">'+item.chord+'</span>':'')+(item.word||'')+'</span>';
+      cur.push({chord:item.chord||'',word:item.word||''});
+    }
+  });
+  if(cur.length)lines.push({t:'w',items:cur});
+  // Move chord-only prefix items to end of previous line (matches app rendering)
+  for(let i=1;i<lines.length;i++){
+    if(lines[i].t!=='w'||lines[i-1].t!=='w')continue;
+    const fw=lines[i].items.findIndex(it=>it.word);
+    if(fw===-1){lines[i-1].items.push(...lines[i].items);lines.splice(i,1);i--;}
+    else if(fw>0){lines[i-1].items.push(...lines[i].items.splice(0,fw));}
+  }
+  let html='<div style="font-family:Georgia,serif;font-size:15px;line-height:1.5">';
+  lines.forEach(line=>{
+    if(line.t==='b'){
+      html+='<div style="color:#c0392b;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin:20px 0 4px;border-left:3px solid #c0392b;padding-left:8px">'+line.text+'</div>';
+      if(line.grid?.trim())html+='<pre style="font-family:monospace;font-weight:700;font-size:14px;white-space:pre-wrap;margin:0 0 10px 11px;color:#333">'+line.grid+'</pre>';
+    }else{
+      const hc=line.items.some(i=>i.chord);
+      html+='<table style="border-collapse:collapse;margin-bottom:8px">';
+      if(hc){
+        html+='<tr>';
+        line.items.forEach(item=>{
+          html+='<td style="color:#c0392b;font-weight:700;font-size:12px;white-space:nowrap;padding:0 4px 1px 0;vertical-align:bottom;font-family:sans-serif">'+(item.chord||'')+'</td>';
+        });
+        html+='</tr>';
+      }
+      html+='<tr>';
+      line.items.forEach(item=>{
+        html+='<td style="white-space:nowrap;padding:0 4px 0 0;vertical-align:top;font-size:15px">'+(item.word||'&nbsp;')+'</td>';
+      });
+      html+='</tr></table>';
     }
   });
   return html+'</div>';
+}
+function _loadJsPDF(cb){
+  if(window.jspdf){cb();return;}
+  const sc=document.createElement('script');
+  sc.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  sc.onload=cb;sc.onerror=()=>alert('Connexion requise pour générer le PDF.');
+  document.head.appendChild(sc);
+}
+function _buildJsPDF(type,pdfTitle,metaParts,s,scale){
+  scale=scale||1;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const ml=14,mr=14,pageW=210-ml-mr;
+  let y=22;
+  doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(17,17,17);
+  const tl=doc.splitTextToSize(pdfTitle,pageW);doc.text(tl,ml,y);y+=tl.length*10+2;
+  if(metaParts.length){doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(130,130,130);doc.text(metaParts.join(' · '),ml,y);y+=8;doc.setTextColor(17,17,17);}
+  doc.setDrawColor(200,200,200);doc.line(ml,y,210-mr,y);y+=10;
+  function np(h){if(y+h>277){doc.addPage();y=20;}}
+  if(type==='sg'||type==='sb'){
+    const gFS=17*scale,lh=8.5*scale,gap=6*scale;
+    ((type==='sg'?(s.sg||s.sc):s.sb)||[]).forEach(sec=>{
+      np(24);
+      doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(192,57,43);
+      doc.text((sec.n||'Section').toUpperCase(),ml,y);y+=3.5;
+      doc.setDrawColor(192,57,43);doc.line(ml,y,210-mr,y);y+=7;
+      doc.setFont('courier','bold');doc.setFontSize(gFS);doc.setTextColor(17,17,17);
+      (sec.c||'').split('\n').forEach(l=>{np(lh+1);doc.text(l,ml,y);y+=lh;});
+      y+=gap;
+    });
+  }else if(type==='ly'){
+    const lyFS=13*scale,lyLH=7*scale;
+    doc.setFont('helvetica','normal');doc.setFontSize(lyFS);
+    (s.ly||'').split('\n').forEach(l=>{
+      if(!l.trim()){y+=4;return;}
+      np(lyLH+1);const w=doc.splitTextToSize(l,pageW);doc.text(w,ml,y);y+=w.length*lyLH;
+    });
+  }else if(type==='lya'){
+    const FS=12*scale,CW=FS*0.6/72*25.4;
+    const lyaLines=[];let lc=[];
+    (s.ly_a||[]).forEach(item=>{
+      if(item.type==='block'){if(lc.length){lyaLines.push({t:'w',items:lc});lc=[];}lyaLines.push({t:'b',text:item.text,grid:item.grid});}
+      else if(item.newline){lyaLines.push({t:'w',items:lc});lc=[];if(item.chord)lc.push({chord:item.chord,word:''});}
+      else lc.push({chord:item.chord||'',word:item.word||''});
+    });
+    if(lc.length)lyaLines.push({t:'w',items:lc});
+    // Move chord-only prefix items to end of previous line (matches app rendering)
+    for(let i=1;i<lyaLines.length;i++){
+      if(lyaLines[i].t!=='w'||lyaLines[i-1].t!=='w')continue;
+      const fw=lyaLines[i].items.findIndex(it=>it.word);
+      if(fw===-1){lyaLines[i-1].items.push(...lyaLines[i].items);lyaLines.splice(i,1);i--;}
+      else if(fw>0){lyaLines[i-1].items.push(...lyaLines[i].items.splice(0,fw));}
+    }
+    lyaLines.forEach(line=>{
+      if(line.t==='b'){
+        np(16);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(192,57,43);
+        doc.text(line.text.toUpperCase(),ml,y);y+=3.5;
+        doc.setDrawColor(192,57,43);doc.line(ml,y,210-mr,y);y+=7;
+        if(line.grid?.trim()){doc.setFont('courier','bold');doc.setFontSize(FS);doc.setTextColor(17,17,17);line.grid.split('\n').forEach(gl=>{np(FS*0.5);doc.text(gl,ml+3,y);y+=FS*0.55;});y+=3;}
+        doc.setTextColor(17,17,17);
+      }else{
+        const hc=line.items.some(i=>i.chord);np(hc?14*scale:8*scale);
+        const pos=[];let x=ml;
+        line.items.forEach(item=>{pos.push(x);x+=(Math.max((item.chord||'').length,(item.word||'').length)+1)*CW;});
+        if(hc){
+          doc.setFont('courier','bold');doc.setFontSize(FS);doc.setTextColor(192,57,43);
+          line.items.forEach((item,i)=>{if(item.chord)doc.text(item.chord,pos[i],y);});
+          y+=5*scale;
+        }
+        doc.setFont('courier','normal');doc.setFontSize(FS);doc.setTextColor(17,17,17);
+        line.items.forEach((item,i)=>{if(item.word)doc.text(item.word,pos[i],y);});
+        y+=7*scale;
+      }
+    });
+  }
+  return doc;
 }
 function doPdfExport(nm,type){
   cM();
@@ -542,9 +649,11 @@ function doPdfExport(nm,type){
   const keyStr=s.k?(s.k+' '+(s.m||'')):'';
   const tunStr=s.t&&s.t!=='E'?'Accordage '+s.t:'E standard';
   const metaParts=[keyStr,tunStr].filter(Boolean);
+  const typeLabel={sg:'Grille Guitare',sb:'Grille Basse',ly:'Paroles',lya:'Accords + Paroles'}[type]||'';
+  const pdfTitle=nm+(typeLabel?' - '+typeLabel:'');
   let content='';
   if(type==='sg'||type==='sb'){
-    const secs=(type==='sg'?s.sg:s.sb)||[];
+    const secs=(type==='sg'?(s.sg||s.sc):s.sb)||[];
     content=secs.map(sec=>'<div style="margin-bottom:28px;break-inside:avoid"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#c0392b;border-bottom:2px solid #c0392b;padding-bottom:4px;margin-bottom:10px">'+(sec.n||'Section')+'</div><pre style="font-family:monospace;font-size:17px;font-weight:700;white-space:pre-wrap;margin:0;line-height:1.9;color:#111">'+(sec.c||'')+'</pre></div>').join('');
   }else if(type==='ly'){
     content='<pre style="font-family:inherit;font-size:15px;white-space:pre-wrap;line-height:1.9;color:#111;margin:0">'+(s.ly||'')+'</pre>';
@@ -556,25 +665,75 @@ function doPdfExport(nm,type){
   const st=document.createElement('style');st.id='_pdf-print-style';
   st.textContent=
     '#_pdf-overlay{position:fixed;inset:0;background:#fff;z-index:99999;display:flex;flex-direction:column;overflow:hidden}'
-    +'#_pdf-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f5f5f5;border-bottom:1px solid #ddd;flex-shrink:0}'
+    +'#_pdf-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f5f5f5;border-bottom:1px solid #ddd;flex-shrink:0;flex-wrap:wrap}'
     +'#_pdf-body{flex:1;overflow-y:auto;padding:40px 36px;color:#111;font-family:Georgia,serif}'
+    +'#_pdf-warn{width:100%;padding:7px 12px;background:#fff3cd;color:#856404;font-size:12px;font-weight:600;border-top:1px solid #ffc107;display:none}'
     +'@media print{body>*:not(#_pdf-overlay){display:none!important}#_pdf-overlay{position:static!important;display:block!important;overflow:visible!important;height:auto!important}#_pdf-bar{display:none!important}#_pdf-body{overflow:visible!important;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
     +'@page{margin:15mm}';
   document.head.appendChild(st);
   const cleanup=()=>{document.getElementById('_pdf-overlay')?.remove();document.getElementById('_pdf-print-style')?.remove();};
+  // Zoom state
+  const scales=[1.125,1.275,1.5,1.725,1.95,2.25];
+  let scaleIdx=2;
   const ov=document.createElement('div');ov.id='_pdf-overlay';
   const bar=document.createElement('div');bar.id='_pdf-bar';
-  const btnPrint=document.createElement('button');
-  btnPrint.textContent='🖨️ Imprimer';
-  btnPrint.style.cssText='background:#e67e22!important;color:#fff!important;border:none!important;border-radius:10px;padding:8px 18px;font-size:14px;font-weight:700;flex-shrink:0';
-  const _typeLabel={sg:'Grille Guitare',sb:'Grille Basse',ly:'Paroles',lya:'Accords + Paroles'}[type]||'';
-  const _pdfTitle=nm+(_typeLabel?' - '+_typeLabel:'');
-  btnPrint.addEventListener('click',()=>{
-    const prev=document.title;
-    document.title=_pdfTitle;
-    window.print();
-    window.addEventListener('afterprint',()=>{document.title=prev;},{once:true});
+  const warnDiv=document.createElement('div');warnDiv.id='_pdf-warn';
+  warnDiv.textContent='⚠️ Certaines lignes risquent d\'être coupées dans le PDF à cette taille.';
+  // Overflow detection
+  function checkOverflow(sc){
+    if(type==='sg'||type==='sb'){
+      const secs=(type==='sg'?(s.sg||s.sc):s.sb)||[];
+      const charW=17*sc*0.6/72*25.4;
+      const maxC=Math.floor(182/charW);
+      return secs.some(sec=>(sec.c||'').split('\n').some(l=>l.length>maxC));
+    }
+    if(type==='lya'){
+      const charW=12*sc*0.6/72*25.4;
+      const maxC=Math.floor(182/charW);
+      return (s.ly_a||[]).some(it=>((it.chord||'').length+(it.word||'').length)>maxC*0.8);
+    }
+    return false;
+  }
+  // Content wrapper (zoom applied here)
+  const contentWrap=document.createElement('div');
+  contentWrap.innerHTML='<h1 style="font-size:28px;font-weight:800;margin:0 0 6px;font-family:sans-serif">'+title+'</h1><p style="font-size:13px;color:#888;margin:0 0 28px;font-family:sans-serif">'+metaParts.join(' · ')+'</p>'+content;
+  function applyScale(){
+    const sc=scales[scaleIdx];
+    contentWrap.style.zoom=sc;
+    btnMinus.disabled=scaleIdx===0;
+    btnPlus.disabled=scaleIdx===scales.length-1;
+    scaleLabel.textContent=Math.round(sc/1.5*100)+'%';
+    warnDiv.style.display=checkOverflow(sc)?'block':'none';
+  }
+  // Buttons
+  const btnDl=document.createElement('button');
+  btnDl.textContent='⬇️ Télécharger PDF';
+  btnDl.style.cssText='background:#e67e22!important;color:#fff!important;border:none!important;border-radius:10px;padding:8px 18px;font-size:14px;font-weight:700;flex-shrink:0';
+  btnDl.addEventListener('click',()=>{
+    btnDl.textContent='Génération…';btnDl.disabled=true;
+    const done=()=>{btnDl.textContent='⬇️ Télécharger PDF';btnDl.disabled=false;};
+    const fail=(err)=>{console.error(err);alert('Erreur lors de la génération du PDF.');done();};
+    _loadJsPDF(()=>{
+      try{_buildJsPDF(type,pdfTitle,metaParts,s,scales[scaleIdx]).save(pdfTitle+'.pdf');done();}catch(e){fail(e);}
+    });
   });
+  const zoomWrap=document.createElement('div');
+  zoomWrap.style.cssText='display:flex;align-items:center;gap:5px;flex-shrink:0;background:#e8e8e8;border-radius:10px;padding:4px 8px';
+  const btnMinus=document.createElement('button');
+  btnMinus.textContent='−';
+  btnMinus.style.cssText='background:none!important;border:none!important;font-size:18px;font-weight:700;color:#333!important;padding:0 4px;line-height:1;cursor:pointer';
+  const scaleLabel=document.createElement('span');
+  scaleLabel.style.cssText='font-size:13px;font-weight:700;color:#333;min-width:36px;text-align:center';
+  const btnPlus=document.createElement('button');
+  btnPlus.textContent='+';
+  btnPlus.style.cssText='background:none!important;border:none!important;font-size:18px;font-weight:700;color:#333!important;padding:0 4px;line-height:1;cursor:pointer';
+  btnMinus.addEventListener('click',()=>{if(scaleIdx>0){scaleIdx--;applyScale();}});
+  btnPlus.addEventListener('click',()=>{if(scaleIdx<scales.length-1){scaleIdx++;applyScale();}});
+  zoomWrap.appendChild(btnMinus);zoomWrap.appendChild(scaleLabel);zoomWrap.appendChild(btnPlus);
+  const btnPrint=document.createElement('button');
+  btnPrint.textContent='🖨️';btnPrint.title='Imprimer';
+  btnPrint.style.cssText='background:#e0e0e0!important;color:#111!important;border:none!important;border-radius:10px;padding:8px 12px;font-size:16px;flex-shrink:0';
+  btnPrint.addEventListener('click',()=>{const prev=document.title;document.title=pdfTitle;window.print();window.addEventListener('afterprint',()=>{document.title=prev;},{once:true});});
   const btnClose=document.createElement('button');
   btnClose.textContent='✕ Fermer';
   btnClose.style.cssText='background:#e0e0e0!important;color:#111!important;border:none!important;border-radius:10px;padding:8px 14px;font-size:14px;flex-shrink:0';
@@ -582,14 +741,12 @@ function doPdfExport(nm,type){
   const titleSpan=document.createElement('span');
   titleSpan.textContent=title;
   titleSpan.style.cssText='font-weight:700;font-size:15px;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-  const hint=document.createElement('span');
-  hint.textContent='💡 Choisir "Print to PDF" pour enregistrer sans imprimer';
-  hint.style.cssText='font-size:11px;color:#999;flex:1;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px';
-  bar.appendChild(titleSpan);bar.appendChild(hint);bar.appendChild(btnPrint);bar.appendChild(btnClose);
+  bar.appendChild(titleSpan);bar.appendChild(zoomWrap);bar.appendChild(btnDl);bar.appendChild(btnPrint);bar.appendChild(btnClose);
+  bar.appendChild(warnDiv);
   const body=document.createElement('div');body.id='_pdf-body';
-  body.innerHTML='<h1 style="font-size:28px;font-weight:800;margin:0 0 6px;font-family:sans-serif">'+title+'</h1><p style="font-size:13px;color:#888;margin:0 0 28px;font-family:sans-serif">'+metaParts.join(' · ')+'</p>'+content;
-  ov.appendChild(bar);ov.appendChild(body);
-  document.body.appendChild(ov);
+  body.appendChild(contentWrap);
+  applyScale();
+  ov.appendChild(bar);ov.appendChild(body);document.body.appendChild(ov);
   window.addEventListener('afterprint',()=>ov.scrollTop=0,{once:true});
 }
 function _addHistory(action,song){
