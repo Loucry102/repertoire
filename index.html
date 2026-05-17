@@ -693,6 +693,41 @@ function doPdfExport(nm,type){
     }
     return false;
   }
+  // Page count simulation (mirrors _buildJsPDF height logic)
+  function estimatePages(sc){
+    const PAGE=277,FIRST_Y=32;
+    let y=FIRST_Y,pages=1;
+    function np(h){if(y+h>PAGE){pages++;y=20;}y+=h;}
+    if(type==='sg'||type==='sb'){
+      const lh=8.5*sc,gap=6*sc;
+      const secs=(type==='sg'?(s.sg||s.sc):s.sb)||[];
+      secs.forEach(sec=>{
+        if(y+24>PAGE){pages++;y=20;}else y+=3.5+lh;
+        (sec.c||'').split('\n').forEach(()=>np(lh));
+        y+=gap;
+      });
+    }else if(type==='ly'){
+      const lyLH=7*sc;
+      (s.ly||'').split('\n').forEach(l=>{if(!l.trim()){y+=4;}else np(lyLH);});
+    }else if(type==='lya'){
+      const FS=12*sc,CW=FS*0.6/72*25.4,maxC=Math.floor(182/CW);
+      const lyaLines=[];let lc=[];
+      (s.ly_a||[]).forEach(item=>{
+        if(item.type==='block'){if(lc.length){lyaLines.push({t:'w',items:lc});lc=[];}lyaLines.push({t:'b'});}
+        else if(item.newline){lyaLines.push({t:'w',items:lc});lc=[];if(item.chord)lc.push({chord:item.chord,word:''});}
+        else lc.push({chord:item.chord||'',word:item.word||''});
+      });
+      if(lc.length)lyaLines.push({t:'w',items:lc});
+      lyaLines.forEach(line=>{
+        if(line.t==='b'){np(16);}
+        else{
+          const hc=line.items&&line.items.some(i=>i.chord);
+          np(hc?14*sc:8*sc);
+        }
+      });
+    }
+    return pages;
+  }
   // Content wrapper (zoom applied here)
   const contentWrap=document.createElement('div');
   contentWrap.innerHTML='<h1 style="font-size:28px;font-weight:800;margin:0 0 6px;font-family:sans-serif">'+title+'</h1><p style="font-size:13px;color:#888;margin:0 0 28px;font-family:sans-serif">'+metaParts.join(' · ')+'</p>'+content;
@@ -703,6 +738,9 @@ function doPdfExport(nm,type){
     btnPlus.disabled=scaleIdx===scales.length-1;
     scaleLabel.textContent=Math.round(sc/1.5*100)+'%';
     warnDiv.style.display=checkOverflow(sc)?'block':'none';
+    const p=estimatePages(sc);
+    pagesSpan.textContent=p===1?'1 page':p+' pages';
+    pagesSpan.style.color=p>1?'#e67e22':'#27ae60';
   }
   // Buttons
   const btnDl=document.createElement('button');
@@ -729,6 +767,8 @@ function doPdfExport(nm,type){
   btnMinus.addEventListener('click',()=>{if(scaleIdx>0){scaleIdx--;applyScale();}});
   btnPlus.addEventListener('click',()=>{if(scaleIdx<scales.length-1){scaleIdx++;applyScale();}});
   zoomWrap.appendChild(btnMinus);zoomWrap.appendChild(scaleLabel);zoomWrap.appendChild(btnPlus);
+  const pagesSpan=document.createElement('span');
+  pagesSpan.style.cssText='font-size:12px;font-weight:700;flex-shrink:0;padding:4px 10px;border-radius:8px;background:#f0f0f0;color:#27ae60';
 
   const btnClose=document.createElement('button');
   btnClose.textContent='✕ Fermer';
@@ -737,7 +777,7 @@ function doPdfExport(nm,type){
   const titleSpan=document.createElement('span');
   titleSpan.textContent=title;
   titleSpan.style.cssText='font-weight:700;font-size:15px;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-  bar.appendChild(titleSpan);bar.appendChild(zoomWrap);bar.appendChild(btnDl);bar.appendChild(btnClose);
+  bar.appendChild(titleSpan);bar.appendChild(pagesSpan);bar.appendChild(zoomWrap);bar.appendChild(btnDl);bar.appendChild(btnClose);
   bar.appendChild(warnDiv);
   const body=document.createElement('div');body.id='_pdf-body';
   body.appendChild(contentWrap);
