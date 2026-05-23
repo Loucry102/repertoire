@@ -1814,6 +1814,21 @@ function rEdImgs(body){
 }
 
 let _kbTa=null; // textarea actif mémorisé
+function kbDimPicker(btn){
+  const old=document.getElementById('_dim-picker');if(old){old.remove();return;}
+  const pick=document.createElement('div');pick.id='_dim-picker';
+  const rect=btn.getBoundingClientRect();
+  pick.style.cssText='position:fixed;bottom:'+(window.innerHeight-rect.top+8)+'px;left:'+rect.left+'px;background:#2a2a2a;border:1px solid #444;border-radius:12px;padding:6px;display:flex;gap:6px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.6)';
+  ['dim','7b5'].forEach(val=>{
+    const b=document.createElement('button');
+    b.textContent=val;
+    b.style.cssText='padding:10px 20px;border-radius:8px;font-size:15px;font-weight:700;background:#1e1e1e!important;color:#fff!important';
+    b.onmousedown=e=>{e.preventDefault();kbIns(val);pick.remove();};
+    pick.appendChild(b);
+  });
+  document.body.appendChild(pick);
+  setTimeout(()=>{const close=e=>{if(!pick.contains(e.target)){pick.remove();document.removeEventListener('mousedown',close);}};document.addEventListener('mousedown',close);},0);
+}
 function kbIns(str){
   if(!_kbTa)return;
   const s=_kbTa.selectionStart??_kbTa.value.length;
@@ -2787,7 +2802,7 @@ function openLyAEditorScreen(){
   document.getElementById('lya-td').textContent='0';
   setTimeout(renderLyAEditor,50);
 }
-const _x={go,openImgFs,kbIns,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
+const _x={go,openImgFs,kbIns,kbDimPicker,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333" oncontextmenu="return false">
@@ -2799,7 +2814,7 @@ Object.entries(_x).forEach(([k,v])=>window[k]=v);
     <button onmousedown="event.preventDefault()" onclick="kbIns('m7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:13px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m7</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('sus2')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus2</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('sus4')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus4</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('dim')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">dim</button>
+    <button onmousedown="event.preventDefault();kbDimPicker(this)" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">dim</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('aug')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">aug</button>
     <button onmousedown="event.preventDefault()" onclick="kbDel()" style="flex:1;height:72px;background:#2d1515!important;color:#e74c3c!important;font-size:22px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">⌫</button>
   </div>
