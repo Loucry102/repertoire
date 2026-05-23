@@ -453,8 +453,8 @@ function e(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
 function mk(tag,style,txt,fn){const el=document.createElement(tag);if(style)el.style.cssText=style;if(txt)el.textContent=txt;if(fn)el.addEventListener('click',fn);return el;}
 function lbl(txt){return Object.assign(document.createElement('label'),{className:'fl',textContent:txt});}
 function fk(k,m){const n=A.alt==='flat'?NF:NS;const i=NS.indexOf(k)>=0?NS.indexOf(k):NF.indexOf(k);return(i>=0?n[i]:k)+(m==='Mineur'?' min':' Maj');}
-function nrm(txt,alt){if(!txt)return txt;const tg=alt==='flat'?NF:NS;return txt.replace(/\b([A-G][#b]?)((?:maj|min|m|M|dim|aug|sus|add)?[0-9]?(?:\/[A-G][#b]?)?)?/g,(m,r,q)=>{const si=NS.indexOf(r),fi=NF.indexOf(r),i=si>=0?si:fi>=0?fi:-1;return i<0?m:tg[i]+(q||'');});}
-function trTxt(txt,s){if(!s||!txt)return txt;const n=A.alt==='flat'?NF:NS;return txt.replace(/\b([A-G][#b]?)((?:maj|min|m|M|dim|aug|sus|add)?[0-9]?(?:\/[A-G][#b]?)?)?/g,(m,r,q)=>{const si=NS.indexOf(r),fi=NF.indexOf(r),i=si>=0?si:fi>=0?fi:-1;return i<0?m:n[((i+s)%12+12)%12]+(q||'');});}
+function nrm(txt,alt){if(!txt)return txt;const tg=alt==='flat'?NF:NS;return txt.replace(/\b([A-G][#b]?)((?:maj|min|m|M|dim|aug|sus|add)?[0-9]?)(\/[A-G][#b]?)?/g,(m,r,q,bass)=>{const si=NS.indexOf(r),fi=NF.indexOf(r),i=si>=0?si:fi>=0?fi:-1;if(i<0)return m;let nb='';if(bass){const br=bass.slice(1),bi=NS.indexOf(br)>=0?NS.indexOf(br):NF.indexOf(br);nb=bi<0?bass:'/'+tg[bi];}return tg[i]+(q||'')+nb;});}
+function trTxt(txt,s){if(!s||!txt)return txt;const n=A.alt==='flat'?NF:NS;return txt.replace(/\b([A-G][#b]?)((?:maj|min|m|M|dim|aug|sus|add)?[0-9]?)(\/[A-G][#b]?)?/g,(m,r,q,bass)=>{const si=NS.indexOf(r),fi=NF.indexOf(r),i=si>=0?si:fi>=0?fi:-1;if(i<0)return m;let nb='';if(bass){const br=bass.slice(1),bi=NS.indexOf(br)>=0?NS.indexOf(br):NF.indexOf(br);nb=bi<0?bass:'/'+n[((bi+s)%12+12)%12];}return n[((i+s)%12+12)%12]+(q||'')+nb;});}
 function tKey(k,m,s){const n=A.alt==='flat'?NF:NS;const si=NS.indexOf(k),fi=NF.indexOf(k),i=si>=0?si:fi>=0?fi:-1;if(i<0)return fk(k,m);return n[((i+s)%12+12)%12]+(m==='Mineur'?' min':' Maj');}
 function getNotes(){return A.alt==='flat'?NF:NS;}
 function sM(html){document.getElementById('mr').innerHTML='<div class="mov"><div class="msh">'+html+'</div></div>';}
@@ -1042,7 +1042,30 @@ function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(
   if(_pib)_pib.onclick=()=>sPInst('bass');
   rSF();setTimeout(attachAllGridShortcuts,50);}
 function capSF(){const cont=document.getElementById('sf2');if(!cont)return;cont.querySelectorAll('.esec').forEach((div,i)=>{const ta=div.querySelector('textarea'),inp=div.querySelector('input');if(ta&&A.psecs[i])A.psecs[i].c=ta.value;if(inp&&A.psecs[i])A.psecs[i].n=inp.value;});}
-function rSF(){const c=document.getElementById('sf2');if(!c)return;c.innerHTML='';A.psecs.forEach((s,i)=>{const d=document.createElement('div');d.className='esec';d.innerHTML='<div class="esh"><input value="'+s.n+'" placeholder="Nom" oninput="A.psecs['+i+'].n=this.value"/><button class="rm" onclick="rSec('+i+')">✕</button></div><textarea inputmode="none" placeholder="Am  F  C  G..." oninput="A.psecs['+i+'].c=this.value">'+s.c+'</textarea>';c.appendChild(d);});setTimeout(()=>{document.querySelectorAll('#sf2 textarea').forEach(ta=>{ta.addEventListener('focus',()=>kbShow(ta));ta.addEventListener('keydown',ev=>{if(!ev.metaKey&&!ev.ctrlKey)ev.preventDefault();});});},50);}
+function rSF(){
+  const c=document.getElementById('sf2');if(!c)return;c.innerHTML='';
+  // Transposition
+  const semi={v:0};
+  const trow=document.createElement('div');trow.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:8px';
+  const tm=mk('button','width:30px;height:30px;border-radius:8px;font-size:14px;padding:0','−');
+  const td=document.createElement('span');td.style.cssText='font-size:12px;color:#aaa;min-width:24px;text-align:center';td.textContent='0';
+  const tp=mk('button','width:30px;height:30px;border-radius:8px;font-size:14px;padding:0','+');
+  const ta2=mk('button','padding:8px 14px;border-radius:8px;font-size:12px;background:#27ae60!important;color:#fff!important;white-space:nowrap','Appliquer transpo');
+  tm.onclick=()=>{semi.v--;td.textContent=(semi.v>0?'+':'')+semi.v;};
+  tp.onclick=()=>{semi.v++;td.textContent=(semi.v>0?'+':'')+semi.v;};
+  ta2.onclick=()=>{
+    if(!semi.v)return;
+    capSF();
+    A.psecs=A.psecs.map(s=>({n:s.n,c:trTxt(nrm(s.c||'',A.alt),semi.v)}));
+    const pk=document.getElementById('pk');
+    if(pk&&pk.value){const n=A.alt==='flat'?NF:NS;const si=NS.indexOf(pk.value),fi=NF.indexOf(pk.value),ix=si>=0?si:fi>=0?fi:-1;if(ix>=0)pk.value=n[((ix+semi.v)%12+12)%12];}
+    semi.v=0;td.textContent='0';rSF();setTimeout(attachAllGridShortcuts,50);
+  };
+  trow.appendChild(tm);trow.appendChild(td);trow.appendChild(tp);trow.appendChild(ta2);c.appendChild(trow);
+  // Sections
+  A.psecs.forEach((s,i)=>{const d=document.createElement('div');d.className='esec';d.innerHTML='<div class="esh"><input value="'+s.n+'" placeholder="Nom" oninput="A.psecs['+i+'].n=this.value"/><button class="rm" onclick="rSec('+i+')">✕</button></div><textarea inputmode="none" placeholder="Am  F  C  G..." oninput="A.psecs['+i+'].c=this.value">'+s.c+'</textarea>';c.appendChild(d);});
+  setTimeout(()=>{document.querySelectorAll('#sf2 textarea').forEach(ta=>{ta.addEventListener('focus',()=>kbShow(ta));ta.addEventListener('keydown',ev=>{if(!ev.metaKey&&!ev.ctrlKey)ev.preventDefault();});});},50);
+}
 function aSec(){capSF();A.psecs.push({n:'Section '+(A.psecs.length+1),c:''});rSF();setTimeout(attachAllGridShortcuts,50);}
 function rSec(i){capSF();A.psecs.splice(i,1);rSF();setTimeout(attachAllGridShortcuts,50);}
 function sPInst(v){A.pins=v;const pg=document.getElementById('pig'),pb=document.getElementById('pib');if(pg)pg.className='tn'+(v!=='guitar'?' off':'');if(pb)pb.className='tn'+(v!=='bass'?' off':'');}
@@ -1611,6 +1634,25 @@ function addInstGrid(inst){
 }
 function rSFAdd(){
   const c2=document.getElementById('sf2add');if(!c2)return;c2.innerHTML='';
+  // Transposition
+  const semi={v:0};
+  const trow=document.createElement('div');trow.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:8px';
+  const tm=mk('button','width:30px;height:30px;border-radius:8px;font-size:14px;padding:0','−');
+  const td=document.createElement('span');td.style.cssText='font-size:12px;color:#aaa;min-width:24px;text-align:center';td.textContent='0';
+  const tp=mk('button','width:30px;height:30px;border-radius:8px;font-size:14px;padding:0','+');
+  const ta2=mk('button','padding:8px 14px;border-radius:8px;font-size:12px;background:#27ae60!important;color:#fff!important;white-space:nowrap','Appliquer transpo');
+  tm.onclick=()=>{semi.v--;td.textContent=(semi.v>0?'+':'')+semi.v;};
+  tp.onclick=()=>{semi.v++;td.textContent=(semi.v>0?'+':'')+semi.v;};
+  ta2.onclick=()=>{
+    if(!semi.v)return;
+    capSFAdd();
+    A.psecs=A.psecs.map(s=>({n:s.n,c:trTxt(nrm(s.c||'',A.alt),semi.v)}));
+    const pk2=document.getElementById('pk2');
+    if(pk2&&pk2.value){const n=A.alt==='flat'?NF:NS;const si=NS.indexOf(pk2.value),fi=NF.indexOf(pk2.value),ix=si>=0?si:fi>=0?fi:-1;if(ix>=0)pk2.value=n[((ix+semi.v)%12+12)%12];}
+    semi.v=0;td.textContent='0';rSFAdd();
+  };
+  trow.appendChild(tm);trow.appendChild(td);trow.appendChild(tp);trow.appendChild(ta2);c2.appendChild(trow);
+  // Sections
   A.psecs.forEach((s,i)=>{
     const d=document.createElement('div');d.className='esec';
     d.innerHTML='<div class="esh"><input value="'+s.n+'" placeholder="Nom" oninput="A.psecs['+i+'].n=this.value"/>'+((i>0)?'<button class="rm" style="background:#444!important;color:#fff!important" onclick="mvSecAdd('+i+',-1)">↑</button>':'<button class="rm" style="background:#444!important;color:#fff!important;opacity:.3" disabled>↑</button>')+''+((i<A.psecs.length-1)?'<button class="rm" style="background:#444!important;color:#fff!important" onclick="mvSecAdd('+i+',1)">↓</button>':'<button class="rm" style="background:#444!important;color:#fff!important;opacity:.3" disabled>↓</button>')+'<button class="rm" onclick="rSecAdd('+i+')">✕</button></div><textarea inputmode="none" placeholder="Am  F  C  G..." oninput="A.psecs['+i+'].c=this.value">'+s.c+'</textarea>';
