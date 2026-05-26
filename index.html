@@ -1218,7 +1218,7 @@ function rSong(){
     }else{
       const w=document.createElement('div');w.className='cw';w.style.cursor='pointer';
       if(!curSecs.length)w.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">Aucune grille</p>';
-      else curSecs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+trTxt(nrm(s.c||'',A.alt),A.semi)+'</div>';w.appendChild(d);});
+      else curSecs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+_gridHtml(trTxt(nrm(s.c||'',A.alt),A.semi))+'</div>';w.appendChild(d);});
       w.appendChild(Object.assign(document.createElement('p'),{style:'font-size:12px;color:#aaa;margin-top:10px;text-align:center',textContent:'↑ Appuyer pour plein écran'}));
       w.addEventListener('click',()=>openFs('chords'));body.appendChild(w);
       document.getElementById('zbar').style.display='flex';
@@ -1253,7 +1253,7 @@ function rSong(){
 function openFs(type){
   const fc=document.getElementById('fscontent');fc.innerHTML='';
   const sbody=document.getElementById('sb');const ratio=sbody?(sbody.scrollTop/(sbody.scrollHeight-sbody.clientHeight||1)):0;
-  if(type==='chords'){const w=document.createElement('div');w.className='cw';w.style.minHeight='100%';const fsSecs=getCurSecs();if(!fsSecs.length)w.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">Aucune grille</p>';else fsSecs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+trTxt(nrm(s.c||'',A.alt),A.semi)+'</div>';w.appendChild(d);});fc.appendChild(w);}
+  if(type==='chords'){const w=document.createElement('div');w.className='cw';w.style.minHeight='100%';const fsSecs=getCurSecs();if(!fsSecs.length)w.innerHTML='<p style="color:#aaa;text-align:center;padding:1rem">Aucune grille</p>';else fsSecs.forEach(s=>{const d=document.createElement('div');d.className='sb';d.innerHTML='<div class="st">'+(s.n||'')+'</div><div class="sc" style="font-size:'+A.cfs+'px">'+_gridHtml(trTxt(nrm(s.c||'',A.alt),A.semi))+'</div>';w.appendChild(d);});fc.appendChild(w);}
   else{
     if(A.showLya&&A.sd.ly_a&&A.sd.ly_a.length>0){
       // Rediriger vers openLyA
@@ -1326,7 +1326,7 @@ function showUI(){
 }
 document.addEventListener('click',()=>{if(document.getElementById('sf')?.classList.contains('on')||document.getElementById('sfs')?.classList.contains('on'))showUI();});
 function sTab(t){A.tab=t;A.semi=0;rSong();}
-function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords'){const _cs=getCurSecs();document.querySelectorAll('.sc').forEach((el,i)=>{if(_cs[i])el.textContent=trTxt(nrm(_cs[i].c||'',A.alt),A.semi);});}}
+function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords'){const _cs=getCurSecs();document.querySelectorAll('.sc').forEach((el,i)=>{if(_cs[i])el.innerHTML=_gridHtml(trTxt(nrm(_cs[i].c||'',A.alt),A.semi));});}}
 function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';const lyaWrap=document.getElementById('lya-ss-wrap');if(lyaWrap)lyaWrap.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
 function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.ly_a)A.ed.ly_a=A.sd.ly_a||null;if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];const _s=DB.s?.[A.grp]?.[A.key]||{};A.ed.ng=_s.ng||'';A.ed.nb=_s.nb||'';A._edInst=A.instMode||'guitar';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
   rES();go('se');setTimeout(attachAllGridShortcuts,50);}
@@ -1814,6 +1814,32 @@ function rEdImgs(body){
 }
 
 let _kbTa=null; // textarea actif mémorisé
+function _gridHtml(txt){
+  const esc=txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.replace(/\(([^)]+)\)/g,'<span style="font-size:.75em;opacity:.6">($1)</span>');
+}
+function kbWrap(){
+  if(!_kbTa)return;
+  const s=_kbTa.selectionStart??_kbTa.value.length;
+  const e=_kbTa.selectionEnd??s;
+  if(s!==e){
+    _kbTa.value=_kbTa.value.slice(0,s)+'('+_kbTa.value.slice(s,e)+')'+_kbTa.value.slice(e);
+    _kbTa.selectionStart=s;_kbTa.selectionEnd=e+2;
+  }else{
+    const before=_kbTa.value.slice(0,s);
+    const match=before.match(/([A-G][#b]?(?:maj7?|min|m7?|dim|aug|sus[24]|add[0-9]*)?)$/);
+    if(match&&match[0]){
+      const start=s-match[0].length;
+      _kbTa.value=_kbTa.value.slice(0,start)+'('+match[0]+')'+_kbTa.value.slice(s);
+      _kbTa.selectionStart=_kbTa.selectionEnd=s+2;
+    }else{
+      _kbTa.value=_kbTa.value.slice(0,s)+'()'+_kbTa.value.slice(s);
+      _kbTa.selectionStart=_kbTa.selectionEnd=s+1;
+    }
+  }
+  _kbTa.dispatchEvent(new Event('input',{bubbles:true}));
+  _kbTa.focus();
+}
 function kbDimPicker(btn){
   const old=document.getElementById('_dim-picker');if(old){old.remove();return;}
   const pick=document.createElement('div');pick.id='_dim-picker';
@@ -2802,7 +2828,7 @@ function openLyAEditorScreen(){
   document.getElementById('lya-td').textContent='0';
   setTimeout(renderLyAEditor,50);
 }
-const _x={go,openImgFs,kbIns,kbDimPicker,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
+const _x={go,openImgFs,kbIns,kbDimPicker,kbWrap,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333" oncontextmenu="return false">
@@ -2839,6 +2865,7 @@ Object.entries(_x).forEach(([k,v])=>window[k]=v);
     <button onmousedown="event.preventDefault()" onclick="kbIns(' || ')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:14px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">||</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('-')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:22px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">-</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('/')" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:22px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">/</button>
+    <button onmousedown="event.preventDefault()" onclick="kbWrap()" style="flex:2;height:76px;background:#2a2a2a!important;color:#e67e22!important;font-size:14px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">( )</button>
     <button onmousedown="event.preventDefault()" onclick="document.getElementById('lya-editor')?document.getElementById('slya')?.style.display==='flex'?lyaNext():kbIns(' '):kbIns(' ')" style="flex:3;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">espace</button>
     <button onmousedown="event.preventDefault()" onclick="kbNewLine()" style="flex:2;height:76px;background:#3a3a3a!important;color:#ccc!important;font-size:22px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">↵</button>
     <button onmousedown="event.preventDefault()" onclick="kbHide();if(_kbTa)_kbTa.blur()" style="flex:2;height:76px;background:#222!important;color:#888!important;font-size:18px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5)">⌨️</button>
