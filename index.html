@@ -1875,21 +1875,32 @@ function kbNewLine(){
 }
 function kbRepeat(){
   if(!_kbTa)return;
+  const ta=_kbTa;
   const overlay=document.createElement('div');
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.addEventListener('mousedown',e=>e.stopPropagation());
   const box=document.createElement('div');
   box.style.cssText='background:#1e1e1e;border-radius:18px;padding:22px;width:100%;max-width:320px';
   const title=mk('div','font-size:17px;font-weight:700;color:#fff;margin-bottom:16px','Nombre de répétitions');
   const inp=document.createElement('input');
   inp.type='number';inp.min='2';inp.max='99';inp.value='2';
   inp.style.cssText='width:100%;padding:14px;font-size:22px;text-align:center;border-radius:12px;border:none;background:#333;color:#fff;outline:none;margin-bottom:16px;box-sizing:border-box';
-  const btns=document.createElement('div');btns.style.cssText='display:flex;gap:10px';
-  const cancel=mk('button','flex:1;padding:14px;border-radius:12px;background:#555!important;color:#fff!important;font-size:15px','Annuler',()=>overlay.remove());
-  const ok=mk('button','flex:1;padding:14px;border-radius:12px;background:#27ae60!important;color:#fff!important;font-size:15px;font-weight:700','OK',()=>{
+  const doInsert=()=>{
     const num=parseInt(inp.value);
     overlay.remove();
-    if(!isNaN(num)&&num>1)kbIns('x'+num);
-  });
+    if(!isNaN(num)&&num>1){
+      const s=ta.selectionStart??ta.value.length;
+      const e=ta.selectionEnd??s;
+      ta.value=ta.value.slice(0,s)+'x'+num+ta.value.slice(e);
+      ta.selectionStart=ta.selectionEnd=s+('x'+num).length;
+      ta.dispatchEvent(new Event('input',{bubbles:true}));
+      ta.focus();
+    }
+  };
+  inp.addEventListener('keydown',ev=>{if(ev.key==='Enter')doInsert();});
+  const btns=document.createElement('div');btns.style.cssText='display:flex;gap:10px';
+  const cancel=mk('button','flex:1;padding:14px;border-radius:12px;background:#555!important;color:#fff!important;font-size:15px','Annuler',()=>overlay.remove());
+  const ok=mk('button','flex:1;padding:14px;border-radius:12px;background:#27ae60!important;color:#fff!important;font-size:15px;font-weight:700','OK',doInsert);
   btns.appendChild(cancel);btns.appendChild(ok);
   box.appendChild(title);box.appendChild(inp);box.appendChild(btns);
   overlay.appendChild(box);document.body.appendChild(overlay);
