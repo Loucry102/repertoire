@@ -1547,6 +1547,8 @@ document.addEventListener('focus',e=>{
 function _shouldCloseKb(target){
   const kbb=document.getElementById('kbb');
   if(kbb&&kbb.contains(target))return false;
+  // Popups du clavier virtuel (dim/sus/?7) appendées à body → ne pas fermer
+  if(target.closest&&target.closest('[data-kbpicker]'))return false;
   // Éléments dans la barre bloc (fenêtre d'édition fixe) → ne pas fermer kbb
   const bar=document.querySelector('[data-blocbar]');
   if(bar&&bar.contains(target))return false;
@@ -1847,21 +1849,26 @@ function kbWrap(){
   _kbTa.dispatchEvent(new Event('input',{bubbles:true}));
   _kbTa.focus();
 }
-function kbDimPicker(btn){
-  const old=document.getElementById('_dim-picker');if(old){old.remove();return;}
-  const pick=document.createElement('div');pick.id='_dim-picker';
+function _kbPicker(btn,id,opts,insFn){
+  const old=document.getElementById(id);if(old){old.remove();return;}
+  const pick=document.createElement('div');pick.id=id;pick.dataset.kbpicker='1';
   const rect=btn.getBoundingClientRect();
   pick.style.cssText='position:fixed;bottom:'+(window.innerHeight-rect.top+8)+'px;left:'+rect.left+'px;background:#2a2a2a;border:1px solid #444;border-radius:12px;padding:6px;display:flex;gap:6px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.6)';
-  ['dim','7b5'].forEach(val=>{
+  opts.forEach(val=>{
     const b=document.createElement('button');
     b.textContent=val;
     b.style.cssText='padding:10px 20px;border-radius:8px;font-size:15px;font-weight:700;background:#1e1e1e!important;color:#fff!important';
-    b.onmousedown=e=>{e.preventDefault();kbIns(val);pick.remove();};
+    const act=e=>{e.preventDefault();insFn(val);pick.remove();};
+    b.onmousedown=act;
+    b.addEventListener('touchstart',act,{passive:false});
     pick.appendChild(b);
   });
   document.body.appendChild(pick);
   setTimeout(()=>{const close=e=>{if(!pick.contains(e.target)){pick.remove();document.removeEventListener('mousedown',close);}};document.addEventListener('mousedown',close);},0);
 }
+function kbDimPicker(btn){_kbPicker(btn,'_dim-picker',['dim','7b5'],kbIns);}
+function kbSusPicker(btn){_kbPicker(btn,'_sus-picker',['sus2','sus4'],kbIns);}
+function kb7Picker(btn){_kbPicker(btn,'_7-picker',['7','m7','maj7','mMaj7'],kbIns);}
 function kbIns(str){
   if(!_kbTa)return;
   const s=_kbTa.selectionStart??_kbTa.value.length;
@@ -2678,13 +2685,17 @@ function renderLyAEditor(noScroll){
     const kbZone=document.createElement('div');
     kbZone.style.cssText='flex-shrink:0;background:#111;border-top:1px solid #222;padding:6px;display:flex;flex-direction:column;gap:5px';
     const r1=document.createElement('div');r1.style.cssText='display:flex;gap:4px';
-    ['m','7','maj7','m7','sus2','sus4','dim','aug'].forEach(q=>{
-      r1.appendChild(_lyaNs(mk('button','flex:1;height:52px;font-size:13px;border-radius:10px;background:#1e1e1e!important;color:#aaa!important;padding:0',q,()=>lyaKbIns(q))));
-    });
+    r1.appendChild(_lyaNs(mk('button','flex:1;height:52px;font-size:13px;border-radius:10px;background:#1e1e1e!important;color:#aaa!important;padding:0','m',()=>lyaKbIns('m'))));
+    const _b7=mk('button','flex:1;height:52px;font-size:13px;border-radius:10px;background:#1e1e1e!important;color:#aaa!important;padding:0','?7');_b7.onclick=()=>_kbPicker(_b7,'_7-picker',['7','m7','maj7','mMaj7'],lyaKbIns);r1.appendChild(_lyaNs(_b7));
+    const _bSus=mk('button','flex:1;height:52px;font-size:13px;border-radius:10px;background:#1e1e1e!important;color:#aaa!important;padding:0','sus');_bSus.onclick=()=>_kbPicker(_bSus,'_sus-picker',['sus2','sus4'],lyaKbIns);r1.appendChild(_lyaNs(_bSus));
+    r1.appendChild(_lyaNs(mk('button','flex:1;height:52px;font-size:13px;border-radius:10px;background:#1e1e1e!important;color:#aaa!important;padding:0','5',()=>lyaKbIns('5'))));
+    const _bDim=mk('button','flex:1;height:52px;font-size:13px;border-radius:10px;background:#1e1e1e!important;color:#aaa!important;padding:0','dim');_bDim.onclick=()=>_kbPicker(_bDim,'_dim-picker',['dim','7b5'],lyaKbIns);r1.appendChild(_lyaNs(_bDim));
+    r1.appendChild(_lyaNs(mk('button','flex:1;height:52px;font-size:13px;border-radius:10px;background:#1e1e1e!important;color:#aaa!important;padding:0','aug',()=>lyaKbIns('aug'))));
     const r2=document.createElement('div');r2.style.cssText='display:flex;gap:4px';
     ['A','B','C','D','E','F','G'].forEach(n=>{
       r2.appendChild(_lyaNs(mk('button','flex:1;height:62px;font-size:24px;font-weight:700;border-radius:12px;background:#252525!important;color:#fff!important;padding:0',n,()=>lyaKbIns(n))));
     });
+    r2.appendChild(_lyaNs(mk('button','flex:1;height:62px;font-size:20px;font-weight:700;border-radius:12px;background:#252525!important;color:#fff!important;padding:0','%',()=>lyaKbIns('%'))));
     ['♯','♭'].forEach((n,i)=>{
       r2.appendChild(_lyaNs(mk('button','flex:1;height:62px;font-size:18px;font-weight:700;border-radius:12px;background:#1e2e1e!important;color:#27ae60!important;padding:0',n,()=>lyaKbIns(i===0?'#':'b'))));
     });
@@ -2846,18 +2857,16 @@ function openLyAEditorScreen(){
   document.getElementById('lya-td').textContent='0';
   setTimeout(renderLyAEditor,50);
 }
-const _x={go,openImgFs,kbIns,kbDimPicker,kbWrap,setSecCol,setSecColAdd,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
+const _x={go,openImgFs,kbIns,kbDimPicker,kbSusPicker,kb7Picker,kbWrap,setSecCol,setSecColAdd,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333" oncontextmenu="return false">
   <!-- Rangée 1 : Qualités -->
   <div style="display:flex;width:100%;gap:5px;margin-bottom:5px">
     <button onmousedown="event.preventDefault()" onclick="kbIns('m')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('maj7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">maj7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('m7')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:13px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">m7</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('sus2')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus2</button>
-    <button onmousedown="event.preventDefault()" onclick="kbIns('sus4')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:11px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus4</button>
+    <button onmousedown="event.preventDefault();kb7Picker(this)" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:13px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">?7</button>
+    <button onmousedown="event.preventDefault();kbSusPicker(this)" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">sus</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('5')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:14px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">5</button>
     <button onmousedown="event.preventDefault();kbDimPicker(this)" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">dim</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('aug')" style="flex:1;height:72px;background:#1e1e1e!important;color:#aaa!important;font-size:12px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">aug</button>
     <button onmousedown="event.preventDefault()" onclick="kbDel()" style="flex:1;height:72px;background:#2d1515!important;color:#e74c3c!important;font-size:22px;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">⌫</button>
@@ -2871,6 +2880,7 @@ Object.entries(_x).forEach(([k,v])=>window[k]=v);
     <button onmousedown="event.preventDefault()" onclick="kbIns('E')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">E</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('F')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">F</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('G')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:24px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">G</button>
+    <button onmousedown="event.preventDefault()" onclick="kbIns('%')" style="flex:1;height:78px;background:#252525!important;color:#fff!important;font-size:20px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">%</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('#')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♯</button>
     <button onmousedown="event.preventDefault()" onclick="kbIns('b')" style="flex:1;height:78px;background:#1e2e1e!important;color:#27ae60!important;font-size:17px;font-weight:700;cursor:pointer;padding:0;border:none;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.5);">♭</button>
   </div>
