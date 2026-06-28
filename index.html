@@ -12,6 +12,8 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23161616'/><text y='68' x='50' text-anchor='middle' font-size='60' fill='white'>🎵</text></svg>">
 <title>Scène</title>
 <style>
+@keyframes _toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes _toastOut{from{opacity:1}to{opacity:0}}
 :root{
   --gc-bg:#1e1e1e;--gc-txt:#fff;--mi-bg:#1e1e1e;--mi-txt:#fff;
   --cw-bg:#1e1e1e;--cw-txt:#fff;--st-txt:#ccc;--sc-txt:#fff;--sep:#333;
@@ -263,6 +265,7 @@ if('serviceWorker' in navigator){
   <div class="shdr">
     <button class="bk" onclick="go('sr')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
     <div class="ttog"><button class="ttb" id="tc" onclick="sTab('chords')">grilles</button><button class="ttb" id="tl" onclick="sTab('lyrics')">paroles</button></div>
+    <button id="img-btn" onclick="openImgFs(0)" style="display:none;padding:7px 12px;border-radius:10px;background:linear-gradient(135deg,#f0922b,#e67e22)!important;color:#fff!important;border:none!important;box-shadow:0 3px 10px rgba(230,126,34,.4);font-size:13px;font-weight:700;flex-shrink:0">📷 images</button>
     <button class="ib" id="eb" onclick="startEdit()"><svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
   </div>
   <div class="stbar">
@@ -374,24 +377,122 @@ const NS=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const NF=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 const DOTS=['#e74c3c','#e67e22','#f1c40f','#2ecc71','#27ae60','#3498db','#9b59b6','#1abc9c','#e91e63','#fff'];
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getFirestore,doc,getDoc,setDoc}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import{getFirestore,doc,getDoc,setDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 const _app=initializeApp({apiKey:"AIzaSyDvA_gyHZkMshBvoU8CeaTIkpGJAnxSrQ4",authDomain:"repertoir-da9bb.firebaseapp.com",projectId:"repertoir-da9bb",storageBucket:"repertoir-da9bb.firebasestorage.app",messagingSenderId:"431935454307",appId:"1:431935454307:web:4990adc2bc52d3818f8c56"});
 const _db=getFirestore(_app);const _doc=doc(_db,'scene','data');
 let DB=null;
-async function loadDB(){
-  try{
-    const snap=await getDoc(_doc);
-    if(snap.exists()){DB=snap.data();localStorage.setItem('scene_db',JSON.stringify(DB));}
-    else{DB={u:{titi:{h:'Loucry102',r:'admin'}},s:{'Lily Cry':{},'Lou Smile':{},'RN102':{}},g:[{n:'Lily Cry',c:'#e74c3c'},{n:'Lou Smile',c:'#3498db'},{n:'RN102',c:'#27ae60'}]};await setDoc(_doc,DB);localStorage.setItem('scene_db',JSON.stringify(DB));}
-  }catch(e){
-    const cached=localStorage.getItem('scene_db');
-    if(cached){try{DB=JSON.parse(cached);}catch(e2){DB={};}}
-    else DB={};
+let _dbReady=false;
+let _pendingWrite=false; // true = modifications locales pas encore envoyées au serveur
+function _showToast(msg,duration=4500){
+  const old=document.getElementById('_sync-toast');if(old)old.remove();
+  const t=document.createElement('div');t.id='_sync-toast';
+  t.style.cssText='position:fixed;bottom:max(calc(env(safe-area-inset-bottom,0px) + 80px),96px);left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:11px 18px;border-radius:14px;font-size:14px;font-weight:600;z-index:9998;box-shadow:0 4px 24px rgba(0,0,0,.6);border:1px solid #333;white-space:nowrap;display:flex;align-items:center;gap:8px;animation:_toastIn .25s ease';
+  t.innerHTML=msg;document.body.appendChild(t);
+  setTimeout(()=>{t.style.animation='_toastOut .3s ease forwards';setTimeout(()=>t.remove(),300);},duration);
+}
+function _detectChanges(oldDB,newDB){
+  const added=[],modified=[];
+  const flat=(db)=>{const r={};Object.keys(db.s||{}).forEach(g=>Object.keys(db.s[g]||{}).forEach(nm=>{if(!nm.startsWith('__'))r[nm]=db.s[g][nm];}));return r;};
+  const oldS=flat(oldDB),newS=flat(newDB);
+  Object.keys(newS).forEach(nm=>{if(!oldS[nm])added.push(nm);else if(JSON.stringify(oldS[nm])!==JSON.stringify(newS[nm]))modified.push(nm);});
+  return{added,modified};
+}
+function _refreshScreen(){
+  const id=document.querySelector('.scr.on')?.id;
+  if(id==='sr')rRep('');
+  else if(id==='sg')rGrps();
+  else if(id==='spv')rPvfScreen();
+  else if(id==='ss')rSong();
+}
+// Fusion profonde : base = serveur, override = local. Le local gagne clé par clé,
+// mais les clés absentes du local (ex: morceaux ajoutés par d'autres) sont préservées.
+function _mergeDB(base,override){
+  if(!base||typeof base!=='object'||Array.isArray(base))return override;
+  const r={...base};
+  for(const k of Object.keys(override)){
+    const ov=override[k],bv=base[k];
+    if(ov&&typeof ov==='object'&&!Array.isArray(ov)&&bv&&typeof bv==='object'&&!Array.isArray(bv)){
+      r[k]=_mergeDB(bv,ov);
+    }else if(typeof ov==='string'&&typeof bv==='string'){
+      r[k]=ov.length>0?ov:bv;
+    }else if(Array.isArray(ov)&&Array.isArray(bv)){
+      r[k]=ov.length>0?ov:bv;
+    }else{
+      r[k]=ov!=null?ov:bv;
+    }
   }
-  if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};
+  return r;
+}
+function _initDB(data){DB=data;if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};}
+function loadDB(){
+  return new Promise(resolve=>{
+    let done=false;
+    const finish=()=>{if(!done){done=true;resolve();}};
+    // Si pas de réseau au démarrage → bascule sur le cache après 6s
+    const offlineTimer=setTimeout(()=>{
+      if(!_dbReady){
+        const cached=localStorage.getItem('scene_db');
+        _initDB(cached?JSON.parse(cached):{});
+        _dbReady=true;finish();
+      }
+    },6000);
+    try{
+      onSnapshot(_doc,snap=>{
+        clearTimeout(offlineTimer);
+        if(!_dbReady){
+          // Premier chargement
+          if(snap.exists()){_initDB(snap.data());}
+          else{_initDB({u:{titi:{h:'Loucry102',r:'admin'}},s:{'Lily Cry':{},'Lou Smile':{},'RN102':{}},g:[{n:'Lily Cry',c:'#e74c3c'},{n:'Lou Smile',c:'#3498db'},{n:'RN102',c:'#27ae60'}]});setDoc(_doc,DB);}
+          localStorage.setItem('scene_db',JSON.stringify(DB));
+          _dbReady=true;finish();
+        }else if(snap.exists()){
+          // Détecter les changements avant fusion
+          const{added,modified}=_detectChanges(DB,snap.data());
+          const hasRemoteChanges=added.length>0||modified.length>0;
+          // Fusion → préserve les données hors ligne
+          DB=_mergeDB(snap.data(),DB);
+          if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};
+          localStorage.setItem('scene_db',JSON.stringify(DB));
+          // Afficher toast + rafraîchir si changement distant réel
+          if(hasRemoteChanges){
+            let msg='';
+            if(added.length===1)msg='🎵 <b>"'+added[0]+'"</b> a été publié';
+            else if(added.length>1)msg='🎵 <b>'+added.length+' morceaux</b> publiés';
+            else if(modified.length===1)msg='✏️ <b>"'+modified[0]+'"</b> a été modifié';
+            else msg='✏️ <b>'+modified.length+' morceaux</b> mis à jour';
+            _showToast(msg);
+            _refreshScreen();
+          }
+          // Reconnexion après mode hors ligne → renvoyer les modifications locales
+          if(_pendingWrite){
+            _pendingWrite=false;
+            setDoc(_doc,DB).catch(e=>console.warn('Retry offline save failed:',e));
+          }
+        }
+      },err=>{
+        clearTimeout(offlineTimer);
+        const cached=localStorage.getItem('scene_db');
+        _initDB(cached?JSON.parse(cached):{});
+        _dbReady=true;finish();
+      });
+    }catch(e){
+      clearTimeout(offlineTimer);
+      const cached=localStorage.getItem('scene_db');
+      _initDB(cached?JSON.parse(cached):{});
+      _dbReady=true;finish();
+    }
+  });
 }
 async function sDB(){
-  try{await setDoc(_doc,DB);}catch(e){console.warn('Firestore save failed:',e);}
+  try{
+    const snap=await getDoc(_doc);
+    if(snap.exists())DB=_mergeDB(snap.data(),DB);
+    await setDoc(_doc,DB);
+    _pendingWrite=false;
+  }catch(e){
+    console.warn('Firestore hors ligne – sera renvoyé à la reconnexion:',e);
+    _pendingWrite=true; // Sera renvoyé automatiquement quand onSnapshot détecte la reconnexion
+  }
   localStorage.setItem('scene_db',JSON.stringify(DB));
 }
 async function compressImg(file){
@@ -464,7 +565,13 @@ function tKey(k,m,s){const n=A.alt==='flat'?NF:NS;const si=NS.indexOf(k),fi=NF.i
 function getNotes(){return A.alt==='flat'?NF:NS;}
 function sM(html){document.getElementById('mr').innerHTML='<div class="mov"><div class="msh">'+html+'</div></div>';}
 function cM(){document.getElementById('mr').innerHTML='';}
-function oMC(ev){if(ev.target.classList.contains('mov'))cM();}
+function oMC(ev){if(!ev.target.classList.contains('mov'))return;if(document.getElementById('pn')||document.getElementById('pk2')||document.getElementById('sf2add'))cancelPub();else cM();}
+function cancelPub(){
+  const ov=document.createElement('div');ov.id='_cpub-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML='<div style="background:#1e1e1e;border-radius:18px;padding:26px 22px;width:100%;max-width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.6)"><p style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px">Fermer sans publier ?</p><p style="font-size:14px;color:#aaa;margin-bottom:22px">Les données saisies seront perdues.</p><div style="display:flex;gap:10px"><button onclick="document.getElementById(\'_cpub-ov\').remove()" style="flex:1;padding:14px;border-radius:12px;font-size:15px">continuer à éditer</button><button onclick="document.getElementById(\'_cpub-ov\').remove();cM()" style="flex:1;padding:14px;border-radius:12px;font-size:15px;background:#e74c3c!important;color:#fff!important;border:none!important">fermer</button></div></div>';
+  document.body.appendChild(ov);
+}
 function rGrps(){
   const isA=A.usr?.role==='admin',body=document.getElementById('grp');body.innerHTML='';
   (DB.g||[]).filter(g=>!g.n.startsWith('__prv__')).forEach(g=>{
@@ -653,7 +760,7 @@ function doPdfExport(nm,type){
   const note=type==='sb'?(s.nb||''):(s.ng||'');
   const title=nm+(note?' ('+note+')':'');
   const keyStr=s.k?(s.k+' '+(s.m||'')):'';
-  const tunStr=s.t&&s.t!=='E'?'Accordage '+s.t:'E standard';
+  const _pdfTun=(type==='sb'?(s.tb||s.t||'E'):(s.tg||s.t||'E'));const tunStr=_pdfTun!=='E'?'Accordage '+_pdfTun:'E standard';
   const metaParts=[keyStr,tunStr].filter(Boolean);
   const typeLabel={sg:'Grille Guitare',sb:'Grille Basse',ly:'Paroles',lya:'Accords + Paroles'}[type]||'';
   const pdfTitle=nm+(typeLabel?' - '+typeLabel:'');
@@ -893,8 +1000,11 @@ function rRep(filter){
   if(inPrv()&&A.prvFolder!==null){const fSongs=(getPvF()[A.prvFolder])||[];names=names.filter(n=>fSongs.includes(n));}
   if(!names.length){list.innerHTML='<div class="nr">'+(filter?'Aucun résultat':'aucun morceau — appuyez sur "+ publier"')+'</div>';return;}
   names.forEach(nm=>{
-    const s=songs[nm],el=document.createElement('div');el.className='mi';el.style.borderLeftColor=s.t==='D'?'#3498db':s.t==='E'?'#e67e22':'#444';
-    const tunStr=s.t?'<span class="mm-lbl">tuning : </span><span class="mm-val">'+s.t+'</span>':'';
+    const s=songs[nm],el=document.createElement('div');el.className='mi';
+    const _hasG=(s.sg||s.sc)?.length>0,_hasB=s.sb?.length>0;
+    const _dispTun=_hasG?(s.tg||s.t||'E'):(s.tb||s.t||'E');
+    el.style.borderLeftColor=_dispTun==='D'?'#3498db':_dispTun==='E'?'#e67e22':'#444';
+    const tunStr=_dispTun&&_dispTun!=='E'?'<span class="mm-lbl">tuning : </span><span class="mm-val">'+_dispTun+'</span>':'';
     const keyStr=s.k?'<span class="mm-lbl">tonalité : </span><span class="mm-val">'+fk(s.k,s.m)+'</span>':'';
     const meta=tunStr||keyStr?'<div class="mi-sep"></div><div style="display:flex;flex-direction:column;gap:4px">'+(tunStr?'<div>'+tunStr+'</div>':'')+(keyStr?'<div>'+keyStr+'</div>':'')+'</div>':'';
     const hasImg=s.imgs&&s.imgs.length>0;
@@ -1051,7 +1161,7 @@ function doDel(nm){
   sDB();cM();rRep('');
 }
 function pubChoice(){pubTxt();}
-function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom du morceau</label><div style="display:flex;gap:8px;margin-bottom:14px"><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text" style="flex:1;margin-bottom:0"/><button onclick="document.getElementById(\'pnote-row\').style.display=\'flex\';this.style.display=\'none\'" style="flex-shrink:0;padding:0 14px;height:48px;font-size:12px;white-space:nowrap;border-radius:10px;background:#e67e22!important;border:none!important;color:#fff!important">+ note</button></div><div id="pnote-row" style="display:none;align-items:center;gap:8px;margin-bottom:14px"><span style="font-size:13px;color:#888;flex-shrink:0">Note :</span><input class="fi" id="pnote" placeholder="ex: capo 3" type="text" style="flex:1;margin-bottom:0"/></div><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Instrument</label><div class="sr"><button class="tn" id="pig">Guitare</button><button class="tn off" id="pib">Basse</button></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><label class="fl">Images (optionnel)</label><div id="ptimgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div><div class="ua" onclick="document.getElementById(\'ptimf\').click()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 4px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="ptimf" accept="image/*" style="display:none" onchange="prvImgTxt(this)"/><div class="ma"><button onclick="cM()" style="background:#fff!important;border:2px solid #111!important;color:#111!important">annuler</button><button onclick="doPubTxt()" style="background:#e67e22!important;border:2px solid #111!important;color:#fff!important">publier</button></div>');
+function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom du morceau</label><div style="display:flex;gap:8px;margin-bottom:14px"><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text" style="flex:1;margin-bottom:0"/><button onclick="document.getElementById(\'pnote-row\').style.display=\'flex\';this.style.display=\'none\'" style="flex-shrink:0;padding:0 14px;height:48px;font-size:12px;white-space:nowrap;border-radius:10px;background:#e67e22!important;border:none!important;color:#fff!important">+ note</button></div><div id="pnote-row" style="display:none;align-items:center;gap:8px;margin-bottom:14px"><span style="font-size:13px;color:#888;flex-shrink:0">Note :</span><input class="fi" id="pnote" placeholder="ex: capo 3" type="text" style="flex:1;margin-bottom:0"/></div><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Instrument</label><div class="sr"><button class="tn" id="pig">Guitare</button><button class="tn off" id="pib">Basse</button></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><label class="fl">Images (optionnel)</label><div id="ptimgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div><div class="ua" onclick="document.getElementById(\'ptimf\').click()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 4px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="ptimf" accept="image/*" style="display:none" onchange="prvImgTxt(this)"/><div class="ma"><button onclick="cM()" style="background:#fff!important;border:2px solid #111!important;color:#111!important" onclick="cancelPub()">annuler</button><button onclick="doPubTxt()" style="background:#e67e22!important;border:2px solid #111!important;color:#fff!important">publier</button></div>');
   A.pins='guitar';
   const _pig=document.getElementById('pig'),_pib=document.getElementById('pib');
   if(_pig)_pig.onclick=()=>sPInst('guitar');
@@ -1089,7 +1199,7 @@ function sPT(t){A.ptun=t;const pe=document.getElementById('pe'),pd=document.getE
 function _applyPrvFolder(nm){if(inPrv()&&A.prvFolder!==null){const u=A.usr.n;if(!DB.pvf)DB.pvf={};if(!DB.pvf[u])DB.pvf[u]={};if(!DB.pvf[u][A.prvFolder])DB.pvf[u][A.prvFolder]=[];if(!DB.pvf[u][A.prvFolder].includes(nm))DB.pvf[u][A.prvFolder].push(nm);}}
 function doPubTxt(){capSF();const nm=(document.getElementById('pn')?.value||'').trim();if(!nm){alert('Entrez un nom');return;}if(!DB.s[A.grp])DB.s[A.grp]={};const _secs=A.psecs.map(s=>({n:s.n||'Section',c:s.c||'',col:s.col||''}));
   const _existing=DB.s[A.grp][nm]||{};
-  DB.s[A.grp][nm]=Object.assign(_existing,{tp:'text',ly:document.getElementById('pl')?.value||'',imgs:A.pimgs.slice(),k:document.getElementById('pk')?.value||'C',m:document.getElementById('pm')?.value||'Majeur',t:A.ptun});
+  DB.s[A.grp][nm]=Object.assign(_existing,{tp:'text',ly:document.getElementById('pl')?.value||'',imgs:A.pimgs.slice(),k:document.getElementById('pk')?.value||'C',m:document.getElementById('pm')?.value||'Majeur',...(A.pins==='guitar'?{tg:A.ptun,t:A.ptun}:{tb:A.ptun})});
   if(A.pins==='bass'){DB.s[A.grp][nm].sb=_secs;if(!DB.s[A.grp][nm].sg)DB.s[A.grp][nm].sg=[];DB.s[A.grp][nm].nb=(document.getElementById('pnote')?.value||'').trim();}
   else{DB.s[A.grp][nm].sg=_secs;if(!DB.s[A.grp][nm].sb)DB.s[A.grp][nm].sb=[];DB.s[A.grp][nm].ng=(document.getElementById('pnote')?.value||'').trim();}
   _applyPrvFolder(nm);_addHistory('publié',nm);sDB();cM();rRep('');}
@@ -1126,7 +1236,7 @@ function doPubImg(){const nm=(document.getElementById('pin')?.value||'').trim();
 function oSong(nm){A.key=nm;A.semi=0;const s=DB.s?.[A.grp]?.[nm]||{};
   const _sg=s.sg?JSON.parse(JSON.stringify(s.sg)):s.sc?JSON.parse(JSON.stringify(s.sc)):[];
   const _sb=s.sb?JSON.parse(JSON.stringify(s.sb)):[];
-  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',ly_a:s.ly_a?JSON.parse(JSON.stringify(s.ly_a)):null,imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
+  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:_sg,lyr:s.ly||'',ly_a:s.ly_a?JSON.parse(JSON.stringify(s.ly_a)):null,imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tung:s.tg||s.t||'E',tunb:s.tb||s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
   // Priorité selon le rôle choisi, mais si la grille n'existe pas → l'autre
   if(A.ins==='bass') A.instMode=_sb.length>0?'bass':(_sg.length>0?'guitar':'bass');
   else A.instMode=_sg.length>0?'guitar':(_sb.length>0?'bass':'guitar');
@@ -1194,7 +1304,9 @@ function rSong(){
     }
   }else if(ib2)ib2.style.display='none';
   const tb=document.getElementById('view-toggle');
-  if(tb){tb.style.display=hasBoth&&t==='chords'?'flex':'none';tb.title=A.viewMode==='text'?'Voir image':'Voir grille texte';tb.textContent=A.viewMode==='text'?'📷 image':'📄 grille';}
+  if(tb)tb.style.display='none';
+  const imgBtn=document.getElementById('img-btn');
+  if(imgBtn)imgBtn.style.display=A.sd.imgs.length>0?'flex':'none';
   document.getElementById('tc').className='ttb'+(t==='chords'?' on':'');
   document.getElementById('tl').className='ttb'+(t==='lyrics'?' on':'');
   document.getElementById('tz').style.display=(t==='chords'&&A.viewMode==='text'&&A.sd.secs.length>0)?'flex':'none';
@@ -1211,7 +1323,7 @@ function rSong(){
   document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;
   const mt=document.getElementById('smt');
   mt.style.display='flex';
-  document.getElementById('smtun').textContent=A.sd.tun||'—';
+  document.getElementById('smtun').textContent=(A.instMode==='bass'?A.sd.tunb:A.sd.tung)||'—';
   document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';
   // Afficher contrôles transpo lya dans smt si paroles+accords actifs
   const showLyaControls=t==='lyrics'&&A.showLya&&A.sd.ly_a&&A.sd.ly_a.some(it=>it.chord);
@@ -1344,7 +1456,7 @@ document.addEventListener('click',()=>{if(document.getElementById('sf')?.classLi
 function sTab(t){A.tab=t;A.semi=0;rSong();}
 function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords'){const _cs=getCurSecs();document.querySelectorAll('.sc').forEach((el,i)=>{if(_cs[i])el.innerHTML=_gridHtml(trTxt(nrm(_cs[i].c||'',A.alt),A.semi));});}}
 function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';const lyaWrap=document.getElementById('lya-ss-wrap');if(lyaWrap)lyaWrap.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
-function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.ly_a)A.ed.ly_a=A.sd.ly_a||null;if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];const _s=DB.s?.[A.grp]?.[A.key]||{};A.ed.ng=_s.ng||'';A.ed.nb=_s.nb||'';A._edInst=A.instMode||'guitar';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
+function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.ly_a)A.ed.ly_a=A.sd.ly_a||null;if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];const _s=DB.s?.[A.grp]?.[A.key]||{};A.ed.ng=_s.ng||'';A.ed.nb=_s.nb||'';A._edInst=A.instMode||'guitar';A.ed.tun=(A._edInst==='bass'?A.sd.tunb:A.sd.tung)||A.sd.tun||'E';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
   rES();go('se');setTimeout(attachAllGridShortcuts,50);}
 function sET(t){cEF();A.et=t;rES();setTimeout(attachAllGridShortcuts,50);}
 function cEF(){const body=document.getElementById('eb2');if(A.et==='lyrics'){const ta=body.querySelector('.ely');if(ta)A.ed.lyr=ta.value;}}
@@ -1418,8 +1530,8 @@ function doDelGrid(){
   }
   cancelEdit();
 }
-function cancelEdit(){go('ss');}
-function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,ly_a:A.ed.ly_a||null,imgs:A.ed.imgs||[],t:A.ed.tun,k:A.ed.tkey,m:A.ed.mode,ng:A.ed.ng||'',nb:A.ed.nb||''});if(newTitle!==A.key){delete DB.s[A.grp][A.key];if(inPrv()){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{const i=DB.pvf[u][f].indexOf(A.key);if(i!==-1){DB.pvf[u][f].splice(i,1);DB.pvf[u][f].push(newTitle);}});}}DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));A.semi=0;rSong();_updateSongNote();rRep('');go('ss');_addHistory('modifié',newTitle);sDB();}
+function cancelEdit(){sM('<div style="text-align:center;padding:8px 0"><p style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px">Fermer sans enregistrer ?</p><p style="font-size:14px;color:#aaa;margin-bottom:22px">Les modifications seront perdues.</p><div class="ma"><button class="cc" onclick="cM()">continuer à modifier</button><button class="dl" onclick="cM();go(\'ss\')">fermer quand même</button></div></div>');}
+function saveEdit(){cEF();const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,ly_a:A.ed.ly_a||null,imgs:A.ed.imgs||[],...(A._edInst==='guitar'?{tg:A.ed.tun,t:A.ed.tun}:{tb:A.ed.tun}),k:A.ed.tkey,m:A.ed.mode,ng:A.ed.ng||'',nb:A.ed.nb||''});if(newTitle!==A.key){delete DB.s[A.grp][A.key];if(inPrv()){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{const i=DB.pvf[u][f].indexOf(A.key);if(i!==-1){DB.pvf[u][f].splice(i,1);DB.pvf[u][f].push(newTitle);}});}}DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));if(A._edInst==='guitar')A.sd.tung=A.ed.tun;else A.sd.tunb=A.ed.tun;A.semi=0;rSong();_updateSongNote();rRep('');go('ss');_addHistory('modifié',newTitle);sDB();}
 function openPrefs(){
   // Construire la modale via DOM pour éviter les problèmes de guillemets
   const div=document.createElement('div');
@@ -1626,7 +1738,7 @@ init();
 
 function addInstGrid(inst){
   // Ouvre un menu publication allégé pour ajouter une grille à un morceau existant
-  A.psecs=[{n:'Intro',c:''}];A.ptun=A.sd.tun||'E';A.pins=inst;A._addInst=inst;
+  A.psecs=[{n:'Intro',c:''}];A.ptun=(inst==='guitar'?A.sd.tung:A.sd.tunb)||A.sd.tun||'E';A.pins=inst;A._addInst=inst;
   const label=inst==='bass'?'Basse':'Guitare';
   const ko=getNotes().map(n=>'<option value="'+n+'"'+(n===A.sd.tkey?' selected':'')+'>'+n+'</option>').join('');
   sM('<h3>Création grille '+label+'</h3>'
@@ -1639,12 +1751,12 @@ function addInstGrid(inst){
     +'<div id="sf2add"></div>'
     +'<button class="asec" onclick="aSecAdd()">+ ajouter une section</button>'
     +'<div style="display:flex;gap:8px;margin-bottom:8px"><button style="flex:1;padding:10px;border-radius:10px;font-size:13px" onclick="cpAddGrid()">Copier une grille</button><button id="paste-add-btn" style="flex:1;padding:10px;border-radius:10px;font-size:13px;opacity:0.4;cursor:not-allowed" disabled onclick="pasteAddGrid()">Coller</button></div>'
-    +'<div class="ma"><button class="cc" onclick="cM()">annuler</button><button onclick="doAddInstGrid()">créer</button></div>');
+    +'<div class="ma"><button class="cc" onclick="cancelPub()">annuler</button><button onclick="doAddInstGrid()">créer</button></div>');
   // Attacher listeners accordage
   const pe2=document.getElementById('pe2'),pd2=document.getElementById('pd2');
   if(pe2)pe2.onclick=()=>{A.ptun='E';pe2.className='tn';pd2.className='tn off';};
   if(pd2)pd2.onclick=()=>{A.ptun='D';pd2.className='tn';pe2.className='tn off';};
-  if(A.sd.tun==='D'&&pd2&&pe2){pd2.className='tn';pe2.className='tn off';}
+  {const _it=(inst==='guitar'?A.sd.tung:A.sd.tunb)||A.sd.tun||'E';if(_it==='D'&&pd2&&pe2){pd2.className='tn';pe2.className='tn off';}}
   rSFAdd();
   // Activer le bouton coller si un clipboard existe déjà
   const pb=document.getElementById('paste-add-btn');
@@ -1715,18 +1827,18 @@ function doAddInstGrid(){
   const mode=document.getElementById('pm2')?.value||A.sd.mode||'Majeur';
   // Mettre à jour Firebase avec les bonnes clés
   const s=DB.s?.[A.grp]?.[A.key];if(!s)return;
-  s[dbKey]=secs;s.t=tun;s.k=tkey;s.m=mode;
+  s[dbKey]=secs;if(A._addInst==='guitar'){s.tg=tun;s.t=tun;}else{s.tb=tun;}s.k=tkey;s.m=mode;
   // Attendre que Firebase soit synced avant de continuer
   setDoc(_doc,DB).then(()=>{
     // Mettre à jour A.sd après confirmation Firebase
     A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
-    A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
+    A.sd.tun=tun;if(A._addInst==='guitar')A.sd.tung=tun;else A.sd.tunb=tun;A.sd.tkey=tkey;A.sd.mode=mode;
     A.instMode=A._addInst;
     cM();rSong();rRep('');
   }).catch(e=>{
     console.warn('sync error',e);
     A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
-    A.sd.tun=tun;A.sd.tkey=tkey;A.sd.mode=mode;
+    A.sd.tun=tun;if(A._addInst==='guitar')A.sd.tung=tun;else A.sd.tunb=tun;A.sd.tkey=tkey;A.sd.mode=mode;
     A.instMode=A._addInst;
     cM();rSong();rRep('');
   });
@@ -2908,7 +3020,7 @@ function openLyAEditorScreen(){
   document.getElementById('lya-td').textContent='0';
   setTimeout(renderLyAEditor,50);
 }
-const _x={go,openImgFs,kbIns,kbDimPicker,kbSusPicker,kb7Picker,kbWrap,kbNote,setSecCol,setSecColAdd,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,rPvfScreen,goBackFromSr,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
+const _x={go,openImgFs,kbIns,kbDimPicker,kbSusPicker,kb7Picker,kbWrap,kbNote,setSecCol,setSecColAdd,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,rPvfScreen,goBackFromSr,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,cancelPub,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333" oncontextmenu="return false">
