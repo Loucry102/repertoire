@@ -416,7 +416,7 @@ function _mergeDB(base,override){
     }else if(typeof ov==='string'&&typeof bv==='string'){
       r[k]=ov.length>0?ov:bv;
     }else if(Array.isArray(ov)&&Array.isArray(bv)){
-      r[k]=ov.length>0?ov:bv;
+      r[k]=(k==='history'||k==='notifs')?(bv.length>=ov.length?bv:ov):(ov.length>0?ov:bv);
     }else{
       r[k]=ov!=null?ov:bv;
     }
