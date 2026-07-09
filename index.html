@@ -239,6 +239,7 @@ if('serviceWorker' in navigator){
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
       <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;font-size:10px;font-weight:800;border-radius:50%;min-width:17px;height:17px;align-items:center;justify-content:center;padding:0 3px;line-height:1"></span>
     </button>
+    <button class="bk" id="admin-btn" onclick="openAdminPanel()" style="display:none"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></button>
     <button class="bk" onclick="openPrefs()"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
   </div>
   <div class="sbar"><input class="sinp" id="gs" placeholder="Rechercher dans tous les groupes…" oninput="doGS(this.value)"/></div>
@@ -572,6 +573,7 @@ function cancelPub(){
 }
 function rGrps(){
   const isA=A.usr?.role==='admin',body=document.getElementById('grp');body.innerHTML='';
+  const adminBtn=document.getElementById('admin-btn');if(adminBtn)adminBtn.style.display=isA?'flex':'none';
   (DB.g||[]).filter(g=>!g.n.startsWith('__prv__')).forEach(g=>{
     const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:10px';
     const btn=document.createElement('button');btn.className='gc';btn.style.flex='1';btn.innerHTML='<span class="dot" style="background:'+g.c+'"></span>'+g.n;btn.addEventListener('click',()=>chGrp(g.n));row.appendChild(btn);
@@ -1558,16 +1560,6 @@ function openPrefs(){
   // Section couleur (conditionnelle)
   _buildColorSection(div, lyaChk, cur);
 
-  // Sauvegarde (admin uniquement)
-  if(A.usr?.role==='admin'){
-  const lbSav=document.createElement('label');lbSav.className='fl';lbSav.style.marginTop='16px';lbSav.textContent='Sauvegarde';div.appendChild(lbSav);
-  const pSav=document.createElement('p');pSav.style.cssText='color:#999;font-size:13px;margin-bottom:10px';pSav.textContent='Exportez une copie de toutes vos données. En cas de problème, importez-la pour tout restaurer.';div.appendChild(pSav);
-  const rowSav=document.createElement('div');rowSav.style.cssText='display:flex;gap:10px;padding-bottom:16px;border-bottom:1px solid #eee';
-  const btnEx=document.createElement('button');btnEx.style.cssText='flex:1;padding:13px;border-radius:12px;background:#27ae60;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer';btnEx.textContent='⬇️ Exporter';btnEx.onclick=()=>exportDB();
-  const btnIm=document.createElement('button');btnIm.style.cssText='flex:1;padding:13px;border-radius:12px;background:#2980b9;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer';btnIm.textContent='⬆️ Importer';btnIm.onclick=()=>importDB();
-  rowSav.appendChild(btnEx);rowSav.appendChild(btnIm);div.appendChild(rowSav);
-  } // fin admin
-
   // Bouton fermer
   const ma=document.createElement('div');ma.className='ma';
   const btnF=document.createElement('button');btnF.className='cc';btnF.textContent='fermer';btnF.onclick=()=>cM();ma.appendChild(btnF);div.appendChild(ma);
@@ -1668,6 +1660,43 @@ function _updateAltToggle(){
 }
 function apTheme(v){setTheme(v);const pd=document.getElementById('ptd'),pl=document.getElementById('ptl');if(pd)pd.className='sbt'+(v!=='dark'?' off':'');if(pl)pl.className='sbt'+(v!=='light'?' off':'');}
 function openAdmin(){const users=DB.u||{};const rows=Object.entries(users).map(([u,ud])=>'<div class="mem"><span class="memn">'+u+'</span><span class="memr">'+(ud.r==='admin'?'admin':ud.r==='editor'?'éditeur':'lecteur')+'</span>'+(u!=='titi'?'<button class="smb" onclick="tRole(\''+e(u)+'\')">rôle</button><button class="smb dl" onclick="dMem(\''+e(u)+'\')">✕</button>':'')+'</div>').join('');A._nr='editor';sM('<h3>Membres</h3>'+(rows||'<p style="color:#aaa;font-size:15px;margin-bottom:12px">Aucun membre</p>')+'<label class="fl" style="margin-top:16px">Ajouter un membre</label><input class="fi" id="nu" placeholder="Pseudo" type="text" style="margin-bottom:10px"/><input class="fi" id="np" placeholder="Mot de passe" type="password" style="margin-bottom:10px"/><div class="sr" style="margin-bottom:14px"><button class="sbt" id="re" onclick="sNR(\'editor\')">éditeur</button><button class="sbt off" id="rr" onclick="sNR(\'reader\')">lecteur</button></div><div class="ma"><button class="cc" onclick="cM()">fermer</button><button onclick="aMem()">ajouter</button></div>');}
+function openAdminPanel(){
+  const div=document.createElement('div');
+
+  // Titre
+  const h3=document.createElement('h3');h3.textContent='Administration';div.appendChild(h3);
+
+  // Stockage
+  const lbSto=document.createElement('label');lbSto.className='fl';lbSto.textContent='Stockage Firebase';div.appendChild(lbSto);
+  const dbJson=JSON.stringify(DB);
+  const dbKo=Math.round(dbJson.length/1024*10)/10;
+  const pct=Math.round(dbKo/1024*100);
+  const barColor=pct<60?'#27ae60':pct<85?'#e67e22':'#e74c3c';
+  const stoDiv=document.createElement('div');stoDiv.style.cssText='padding:14px 0 16px;border-bottom:1px solid #eee';
+  stoDiv.innerHTML='<div style="display:flex;justify-content:space-between;font-size:14px;color:#111;font-weight:600;margin-bottom:8px"><span>Document Firestore</span><span>'+dbKo+' Ko / 1 024 Ko</span></div>'
+    +'<div style="background:#e8e8e8;border-radius:6px;height:8px;overflow:hidden"><div style="width:'+Math.min(pct,100)+'%;height:100%;background:'+barColor+';border-radius:6px;transition:width .3s"></div></div>'
+    +'<p style="font-size:12px;color:#999;margin-top:6px">'+pct+'% utilisé — '+(pct<60?'vous êtes tranquilles':pct<85?'attention, ça commence à remplir':'proche de la limite !')+' (images non comptées, stockées sur Cloudinary)</p>';
+  div.appendChild(stoDiv);
+
+  // Sauvegarde
+  const lbSav=document.createElement('label');lbSav.className='fl';lbSav.style.marginTop='16px';lbSav.textContent='Sauvegarde';div.appendChild(lbSav);
+  const pSav=document.createElement('p');pSav.style.cssText='color:#999;font-size:13px;margin-bottom:10px';pSav.textContent='Exportez une copie de toutes vos données. En cas de problème, importez-la pour tout restaurer.';div.appendChild(pSav);
+  const rowSav=document.createElement('div');rowSav.style.cssText='display:flex;gap:10px;padding-bottom:16px;border-bottom:1px solid #eee';
+  const btnEx=document.createElement('button');btnEx.style.cssText='flex:1;padding:13px;border-radius:12px;background:#27ae60;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer';btnEx.textContent='⬇️ Exporter';btnEx.onclick=()=>exportDB();
+  const btnIm=document.createElement('button');btnIm.style.cssText='flex:1;padding:13px;border-radius:12px;background:#2980b9;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer';btnIm.textContent='⬆️ Importer';btnIm.onclick=()=>importDB();
+  rowSav.appendChild(btnEx);rowSav.appendChild(btnIm);div.appendChild(rowSav);
+
+  // Membres
+  const lbMem=document.createElement('label');lbMem.className='fl';lbMem.style.marginTop='16px';lbMem.textContent='Membres';div.appendChild(lbMem);
+  const btnMem=document.createElement('button');btnMem.style.cssText='width:100%;padding:13px;border-radius:12px;background:#e67e22;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:4px';btnMem.textContent='⚙ Gérer les utilisateurs';btnMem.onclick=()=>{cM();openAdmin();};div.appendChild(btnMem);
+
+  // Fermer
+  const ma=document.createElement('div');ma.className='ma';
+  const btnF=document.createElement('button');btnF.className='cc';btnF.textContent='fermer';btnF.onclick=()=>cM();ma.appendChild(btnF);div.appendChild(ma);
+
+  document.getElementById('mr').innerHTML='<div class="mov"><div class="msh"></div></div>';
+  document.querySelector('#mr .msh').appendChild(div);
+}
 function sNR(r){A._nr=r;const re=document.getElementById('re'),rr=document.getElementById('rr');if(re)re.className='sbt'+(r!=='editor'?' off':'');if(rr)rr.className='sbt'+(r!=='reader'?' off':'');}
 function aMem(){const u=(document.getElementById('nu')?.value||'').trim(),p=(document.getElementById('np')?.value||'').trim();if(!u||!p){alert('Remplissez les deux champs');return;}DB.u[u]={h:p,r:A._nr||'editor'};sDB();cM();openAdmin();}
 function tRole(u){DB.u[u].r=DB.u[u].r==='editor'?'reader':'editor';sDB();cM();openAdmin();}
@@ -3063,7 +3092,7 @@ function openLyAEditorScreen(){
   document.getElementById('lya-td').textContent='0';
   setTimeout(renderLyAEditor,50);
 }
-const _x={go,openImgFs,kbIns,kbDimPicker,kbSusPicker,kb7Picker,kbWrap,kbNote,setSecCol,setSecColAdd,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,rPvfScreen,goBackFromSr,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,cancelPub,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
+const _x={go,openImgFs,kbIns,kbDimPicker,kbSusPicker,kb7Picker,kbWrap,kbNote,setSecCol,setSecColAdd,openLyA,apLya,trLyA,apAltLya,_updateLyaAltToggle,_updateLyaSsAlt,lyaDispChord,openLyAEditorScreen,lyaCancel,lyaSave,lyaNext,lyaPrev,lyaKbIns,renderLyAEditor,parseLyricsToWords,renderLyA,kbDel,kbNewLine,kbRepeat,kbShow,kbHide,toggleView,toggleInst,_updateSongNote,apAltDirect,_updateAltToggle,addInstGrid,doAddInstGrid,doDelGrid,goSl,goSlList,goSlDetail,createSl,doDelSl,openSlPicker,slPrev,slNext,exitSl,rSFAdd,aSecAdd,rSecAdd,mvSecAdd,capSFAdd,cpAddGrid,pasteAddGrid,getCurSecs,hasOtherSecs,rEdSecs,sPInst,prvImgTxt,rPtImgs,rEdImgs,attachGridShortcuts,attachAllGridShortcuts,doLogin,doLogout,chooseInstr,rGrps,openAG,pC,doAG,cfDelG,doDelG,chGrp,doGS,sGD,cDD,tDD,rRep,fRep,oCT,doCT,inPrv,getPvF,rPvfTabs,rPvfScreen,goBackFromSr,newPvF,doNewPvF,cfDelPvF,doDelPvF,mvPvF,doMvPvF,oCTprvF,doCTpvf,cfDel,cfDelConfirm,prvDelToggle,doDel,cancelPub,pubChoice,pubTxt,capSF,rSF,aSec,rSec,sPT,doPubTxt,pubImg,sPTI,prvImg,rPimgList,doPubImg,oSong,rSong,openFs,exitFs,zmFs,zmImg,showUI,sTab,tr,zm,startEdit,sET,cEF,rES,rES2,cancelEdit,saveEdit,openPrefs,apAlt,apTheme,openAdmin,openAdminPanel,sNR,aMem,tRole,dMem,sM,cM,oMC,getNotes,mk,tKey,fk,nrm,e,trTxt,openPdfExport,doPdfExport,oSendToUser,doSendToUser,openNotifs,openNotifSong,delNotif,_refreshNotifBadge,openHistory,openHistorySong,_addHistory};
 Object.entries(_x).forEach(([k,v])=>window[k]=v);
 </script>
 <div id="kbb" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;flex-direction:column;background:#1a1a1a!important;border-top:2px solid #333" oncontextmenu="return false">
