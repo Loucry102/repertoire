@@ -442,7 +442,7 @@ function loadDB(){
         if(!_dbReady){
           // Premier chargement
           if(snap.exists()){_initDB(snap.data());}
-          else{_initDB({u:{titi:{h:'Loucry102',r:'admin'}},s:{'Lily Cry':{},'Lou Smile':{},'RN102':{}},g:[{n:'Lily Cry',c:'#e74c3c'},{n:'Lou Smile',c:'#3498db'},{n:'RN102',c:'#27ae60'}]});setDoc(_doc,DB);}
+          else{_initDB({u:{},s:{},g:[],sl:{}});}
           localStorage.setItem('scene_db',JSON.stringify(DB));
           _dbReady=true;finish();
         }else if(snap.exists()){
@@ -1560,6 +1560,16 @@ function openPrefs(){
   // Section couleur (conditionnelle)
   _buildColorSection(div, lyaChk, cur);
 
+  // Sauvegarde (admin uniquement)
+  if(A.usr?.role==='admin'){
+  const lbSav=document.createElement('label');lbSav.className='fl';lbSav.style.marginTop='16px';lbSav.textContent='Sauvegarde';div.appendChild(lbSav);
+  const pSav=document.createElement('p');pSav.style.cssText='color:#999;font-size:13px;margin-bottom:10px';pSav.textContent='Exportez une copie de toutes vos données. En cas de problème, importez-la pour tout restaurer.';div.appendChild(pSav);
+  const rowSav=document.createElement('div');rowSav.style.cssText='display:flex;gap:10px;padding-bottom:16px;border-bottom:1px solid #eee';
+  const btnEx=document.createElement('button');btnEx.style.cssText='flex:1;padding:13px;border-radius:12px;background:#27ae60;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer';btnEx.textContent='⬇️ Exporter';btnEx.onclick=()=>exportDB();
+  const btnIm=document.createElement('button');btnIm.style.cssText='flex:1;padding:13px;border-radius:12px;background:#2980b9;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer';btnIm.textContent='⬆️ Importer';btnIm.onclick=()=>importDB();
+  rowSav.appendChild(btnEx);rowSav.appendChild(btnIm);div.appendChild(rowSav);
+  } // fin admin
+
   // Bouton fermer
   const ma=document.createElement('div');ma.className='ma';
   const btnF=document.createElement('button');btnF.className='cc';btnF.textContent='fermer';btnF.onclick=()=>cM();ma.appendChild(btnF);div.appendChild(ma);
@@ -1592,6 +1602,41 @@ function _buildColorSection(container, show, cur){
 
 function _refreshColorSection(container, show, cur){
   _buildColorSection(container, show, cur);
+}
+function exportDB(){
+  const date=new Date();
+  const stamp=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='repertoire_'+stamp+'.json';a.click();
+  URL.revokeObjectURL(url);
+  _showToast('✅ Sauvegarde téléchargée');
+}
+function importDB(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    try{
+      const txt=await file.text();
+      const parsed=JSON.parse(txt);
+      if(!parsed.s&&!parsed.g){_showToast('❌ Fichier invalide');return;}
+      const confirm=document.createElement('div');
+      confirm.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px';
+      confirm.innerHTML='<div style="background:#1a1a1a;border-radius:18px;padding:24px;max-width:340px;width:100%;color:#fff"><h3 style="margin:0 0 12px;font-size:17px">Restaurer la sauvegarde ?</h3><p style="color:#aaa;font-size:14px;margin:0 0 20px">Toutes les données actuelles seront remplacées par le fichier importé.</p><div style="display:flex;gap:10px"><button onclick="this.closest(\'div[style]\').remove()" style="flex:1;padding:12px;border-radius:10px;background:#333;color:#fff;border:none;font-size:14px;cursor:pointer">Annuler</button><button id="_imp-ok" style="flex:1;padding:12px;border-radius:10px;background:#e74c3c;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer">Restaurer</button></div></div>';
+      document.body.appendChild(confirm);
+      document.getElementById('_imp-ok').onclick=async()=>{
+        confirm.remove();
+        DB=parsed;
+        if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};
+        localStorage.setItem('scene_db',JSON.stringify(DB));
+        await sDB();
+        cM();
+        _refreshScreen();
+        _showToast('✅ Données restaurées');
+      };
+    }catch(err){_showToast('❌ Fichier invalide');}
+  };
+  inp.click();
 }
 
 function apLyaColor(c){
