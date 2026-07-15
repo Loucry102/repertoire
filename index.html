@@ -232,8 +232,9 @@ if('serviceWorker' in navigator){
   <div class="hdr">
     <button class="bk" onclick="go('si')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
     <span class="ht">quel groupe ?</span>
-    <button class="bk" onclick="openHistory()">
+    <button class="bk" onclick="openHistory()" style="position:relative">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 0 .5-4.5"/><polyline points="3 3 3 7 7 7"/></svg>
+      <span id="sync-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e67e22;border-radius:50%;width:10px;height:10px;border:2px solid var(--bg,#111)"></span>
     </button>
     <button class="bk" id="notif-btn" onclick="openNotifs()" style="position:relative">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -390,6 +391,10 @@ let _pendingClearArrays=JSON.parse(localStorage.getItem('scene_pca')||'[]');
 function _savePD(){localStorage.setItem('scene_pd',JSON.stringify(_pendingDeletes));localStorage.setItem('scene_pca',JSON.stringify(_pendingClearArrays));}
 function _clearPD(){_pendingDeletes=[];_pendingClearArrays=[];localStorage.removeItem('scene_pd');localStorage.removeItem('scene_pca');}
 function _reapplyPD(){for(const{grp,nm}of _pendingDeletes){if(DB.s?.[grp]?.[nm])delete DB.s[grp][nm];}for(const{grp,nm,key}of _pendingClearArrays){if(DB.s?.[grp]?.[nm])DB.s[grp][nm][key]=[];}}
+function _updateSyncBadge(){
+  const b=document.getElementById('sync-badge');
+  if(b)b.style.display=_pendingWrite?'block':'none';
+}
 function _showToast(msg,duration=4500){
   const old=document.getElementById('_sync-toast');if(old)old.remove();
   const t=document.createElement('div');t.id='_sync-toast';
@@ -456,8 +461,9 @@ function loadDB(){
           // Détecter les changements avant fusion
           const{added,modified}=_detectChanges(DB,snap.data());
           const hasRemoteChanges=added.length>0||modified.length>0;
-          // Fusion → préserve les données hors ligne
-          DB=_mergeDB(snap.data(),DB);
+          // En ligne : serveur gagne directement (écritures ciblées → rien à réconcilier localement)
+          // Hors ligne : fusion pour préserver les modifs locales non encore envoyées
+          if(_pendingWrite){DB=_mergeDB(snap.data(),DB);}else{DB=snap.data();}
           if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};
           // Réappliquer suppressions pendantes (résistent au redémarrage via localStorage)
           _reapplyPD();
@@ -475,7 +481,7 @@ function loadDB(){
           // Reconnexion après mode hors ligne → renvoyer via sDB() pour merge+suppressions
           if(_pendingWrite){
             _pendingWrite=false;
-            sDB();
+            sDB(null,true);
           }
         }
       },err=>{
@@ -492,7 +498,7 @@ function loadDB(){
     }
   });
 }
-async function sDB(patch=null){
+async function sDB(patch=null,reconnect=false){
   try{
     if(patch&&_docExists){
       // Écriture ciblée : seul le morceau concerné est touché dans Firestore
@@ -501,16 +507,19 @@ async function sDB(patch=null){
     }else{
       // Écriture complète (gestion groupes/utilisateurs, reconnexion hors-ligne)
       const snap=await getDoc(_doc);
-      if(snap.exists()){DB=_mergeDB(snap.data(),DB);_docExists=true;}
+      if(snap.exists()){DB=_mergeDB(snap.data(),DB);}
       _reapplyPD();_clearPD();
       await setDoc(_doc,DB);
+      _docExists=true;
     }
     _pendingWrite=false;
+    if(reconnect)_showToast('☁️ Modifications synchronisées',3000);
   }catch(e){
     console.warn('Firestore hors ligne – sera renvoyé à la reconnexion:',e);
     _pendingWrite=true;
   }
   localStorage.setItem('scene_db',JSON.stringify(DB));
+  _updateSyncBadge();
 }
 async function compressImg(file){
   return new Promise(resolve=>{
