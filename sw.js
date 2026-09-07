@@ -1,4 +1,4 @@
-const CACHE = 'scene-v25';
+const CACHE = 'scene-v26';
 const ASSETS = [
   './',
   './index.html',
