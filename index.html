@@ -379,7 +379,7 @@ const NS=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const NF=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 const DOTS=['#e74c3c','#e67e22','#f1c40f','#2ecc71','#27ae60','#3498db','#9b59b6','#1abc9c','#e91e63','#fff'];
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getFirestore,doc,getDoc,setDoc,updateDoc,deleteField,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import{getFirestore,doc,getDoc,setDoc,updateDoc,deleteField,onSnapshot,FieldPath}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 const _app=initializeApp({apiKey:"AIzaSyDvA_gyHZkMshBvoU8CeaTIkpGJAnxSrQ4",authDomain:"repertoir-da9bb.firebaseapp.com",projectId:"repertoir-da9bb",storageBucket:"repertoir-da9bb.firebasestorage.app",messagingSenderId:"431935454307",appId:"1:431935454307:web:4990adc2bc52d3818f8c56"});
 const _db=getFirestore(_app);const _doc=doc(_db,'scene','data');
 let DB=null;
@@ -476,6 +476,16 @@ function loadDB(){
             else if(modified.length===1)msg='✏️ <b>"'+modified[0]+'"</b> a été modifié';
             else msg='✏️ <b>'+modified.length+' morceaux</b> mis à jour';
             _showToast(msg);
+            // Le morceau ouvert a-t-il changé côté serveur ?
+            const curId=document.querySelector('.scr.on')?.id;
+            if(A.key&&modified.includes(A.key)){
+              if(curId==='se'||curId==='slya'){
+                // en cours d'édition : on ne touche pas au tampon, on prévient
+                _showToast('⚠️ Ce morceau vient d\'être modifié ailleurs — vos changements non enregistrés priment',7000);
+              }else if(DB.s?.[A.grp]?.[A.key]){
+                _rebuildSdFromDB();
+              }
+            }
             _refreshScreen();
           }
           // Reconnexion après mode hors ligne → renvoyer via sDB() pour merge+suppressions
@@ -520,6 +530,70 @@ async function sDB(patch=null,reconnect=false){
   }
   localStorage.setItem('scene_db',JSON.stringify(DB));
   _updateSyncBadge();
+}
+// ─── Écritures ciblées (anti-perte de données) ──────────────────────
+// Filet de sécurité : sauvegardes locales roulantes avant chaque écriture.
+function _autoBackup(){
+  try{
+    const now=Date.now();
+    let bk=JSON.parse(localStorage.getItem('scene_bk')||'[]');
+    const last=bk[bk.length-1];
+    if(!last||now-last.ts>18e5){ // 1 par lancement puis 1 / 30 min max
+      bk.push({ts:now,by:A?.usr?.n||'',db:JSON.stringify(DB)});
+      if(bk.length>8)bk=bk.slice(-8);
+      localStorage.setItem('scene_bk',JSON.stringify(bk));
+    }
+  }catch(e){}
+}
+async function _wr(op){
+  _autoBackup();
+  localStorage.setItem('scene_db',JSON.stringify(DB)); // persistance locale immédiate
+  if(!_docExists){await sDB();return;}
+  try{
+    await op();
+    _pendingWrite=false;
+  }catch(e){
+    console.warn('Firestore hors ligne – renvoi à la reconnexion:',e);
+    _pendingWrite=true;
+  }
+  localStorage.setItem('scene_db',JSON.stringify(DB));
+  _updateSyncBadge();
+}
+// Objet morceau complet (publication, copie, réception)
+function _songSet(grp,nm,obj,extra,delNm){
+  return _wr(async()=>{
+    const args=[_doc,new FieldPath('s',grp,nm),obj];
+    if(delNm&&delNm!==nm)args.push(new FieldPath('s',grp,delNm),deleteField());
+    if(extra)for(const k in extra)args.push(k,extra[k]);
+    await updateDoc(...args);
+  });
+}
+// Seulement certains champs d'un morceau : les autres champs — et tous les
+// autres morceaux — ne sont jamais touchés (fin des paroles/grilles écrasées).
+function _songPatch(grp,nm,fields,extra){
+  return _wr(async()=>{
+    const args=[_doc];
+    for(const k in fields)args.push(new FieldPath('s',grp,nm,k),fields[k]);
+    if(extra)for(const k in extra)args.push(k,extra[k]);
+    await updateDoc(...args);
+  });
+}
+// Suppression d'un morceau
+function _songDel(grp,nm,extra){
+  return _wr(async()=>{
+    const args=[_doc,new FieldPath('s',grp,nm),deleteField()];
+    if(extra)for(const k in extra)args.push(k,extra[k]);
+    await updateDoc(...args);
+  });
+}
+// Remplace des branches de premier niveau (u, g, sl, pvf, notifs, history)
+// sans jamais toucher à 's' (les morceaux).
+function _topSet(...keys){
+  return _wr(async()=>{
+    const patch={};
+    for(const k of keys)patch[k]=(DB[k]===undefined?deleteField():DB[k]);
+    await updateDoc(_doc,patch);
+  });
 }
 async function compressImg(file){
   return new Promise(resolve=>{
@@ -633,10 +707,10 @@ function rGrps(){
 function sGD(){document.getElementById('grp').style.display='flex';document.getElementById('gsr').style.display='none';}
 function chGrp(n){A.grp=n;A.prvFolder=null;document.getElementById('rpt').textContent=n.startsWith('__prv__')?'Mon espace':n;document.getElementById('pbm').style.display=canEdit()?'':'none';if(n.startsWith('__prv__')){rPvfScreen();go('spv');}else{rRep('');go('sr');}}
 function cfDelG(n){sM('<h3>Supprimer le groupe ?</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+n+'"</p><div class="ma"><button class="cc" onclick="cM()">annuler</button><button class="dl" onclick="doDelG(\''+e(n)+'\')">oui, supprimer</button></div>');}
-function doDelG(n){if(DB.g)DB.g=DB.g.filter(g=>g.n!==n);if(DB.s?.[n])delete DB.s[n];sDB();cM();rGrps();}
+function doDelG(n){if(DB.g)DB.g=DB.g.filter(g=>g.n!==n);if(DB.s?.[n])delete DB.s[n];_wr(async()=>updateDoc(_doc,new FieldPath('s',n),deleteField(),'g',DB.g));cM();rGrps();}
 function openAG(){const colors=['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#95a5a6'];if(!A.nc)A.nc='#e74c3c';const sw=colors.map(c=>'<button class="tn'+(c===A.nc?'':' off')+'" onclick="pC(\''+c+'\')" style="background:'+c+'!important;width:34px;height:34px;border-radius:50%;padding:0;border:3px solid '+(c===A.nc?'#fff':'transparent')+'"></button>').join('');sM('<h3>Nouveau groupe</h3><label class="fl">Nom</label><input class="fi" id="gni" placeholder="Nom du groupe" style="margin-bottom:12px"/><label class="fl">Couleur</label><div class="sr" style="flex-wrap:wrap;gap:8px;padding:8px 0 14px">'+sw+'</div><div class="ma"><button class="cc" onclick="cM()">annuler</button><button onclick="doAG()">créer</button></div>');}
 function pC(c){A.nc=c;openAG();}
-function doAG(){const n=(document.getElementById('gni')?.value||'').trim();if(!n){alert('Entrez un nom');return;}if((DB.g||[]).some(g=>g.n===n)){alert('Ce groupe existe déjà');return;}if(!DB.g)DB.g=[];DB.g.push({n,c:A.nc||'#e74c3c'});if(!DB.s)DB.s={};DB.s[n]={};sDB();cM();rGrps();}
+function doAG(){const n=(document.getElementById('gni')?.value||'').trim();if(!n){alert('Entrez un nom');return;}if((DB.g||[]).some(g=>g.n===n)){alert('Ce groupe existe déjà');return;}if(!DB.g)DB.g=[];DB.g.push({n,c:A.nc||'#e74c3c'});if(!DB.s)DB.s={};DB.s[n]={};_wr(async()=>updateDoc(_doc,new FieldPath('s',n),{},'g',DB.g));cM();rGrps();}
 function doGS(q){
   q=q.trim().toLowerCase();if(!q){rGrps();sGD();return;}
   document.getElementById('grp').style.display='none';const res=document.getElementById('gsr');res.style.display='block';res.innerHTML='';let found=0;
@@ -974,7 +1048,7 @@ function openNotifs(){
   const notifs=DB.notifs[u];
   let changed=false;
   notifs.forEach(n=>{if(!n.read){n.read=true;changed=true;}});
-  if(changed){sDB();_refreshNotifBadge();}
+  if(changed){_topSet('notifs');_refreshNotifBadge();}
   const items=notifs.length?[...notifs].reverse().map(n=>{
     const date=_fmtDate(n.ts)||'';
     return '<div class="notif-item" style="cursor:pointer;display:flex;align-items:center;gap:10px">'
@@ -999,7 +1073,7 @@ function openNotifSong(nm){
 function delNotif(id){
   const u=A.usr?.n;if(!u||!DB.notifs?.[u])return;
   DB.notifs[u]=DB.notifs[u].filter(n=>n.id!==id);
-  sDB();openNotifs();
+  _topSet('notifs');openNotifs();
 }
 function oSendToUser(nm){
   cDD();
@@ -1017,7 +1091,9 @@ function doSendToUser(nm,targetUser){
   if(!DB.notifs[targetUser])DB.notifs[targetUser]=[];
   const _now=Date.now();
   DB.notifs[targetUser].push({id:_now,type:'song_received',from:A.usr.n,song:nm,ts:_now,read:false});
-  sDB();cM();
+  _songSet(tgt,nm,DB.s[tgt][nm]);
+  _topSet('notifs');
+  cM();
   sM('<h3>✓ Envoyé !</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+nm+'" a été envoyé dans le Mon espace de '+targetUser+'</p><div class="ma"><button onclick="cM()">OK</button></div>');
 }
 function rRep(filter){
@@ -1064,7 +1140,7 @@ function doCT(nm,tgt){
   const s=DB.s?.[A.grp]?.[nm];if(!s){cM();return;}
   if(!DB.s[tgt])DB.s[tgt]={};
   DB.s[tgt][nm]=JSON.parse(JSON.stringify(s));
-  sDB();cM();
+  _songSet(tgt,nm,DB.s[tgt][nm]);cM();
   const tgtLabel=tgt.startsWith('__prv__')?'Mon espace':tgt;
   sM('<h3>✓ Copié !</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+nm+'" → '+tgtLabel+'</p><div class="ma"><button onclick="cM()">OK</button></div>');
 }
@@ -1101,12 +1177,12 @@ function doNewPvF(){
   const n=(document.getElementById('pvfni')?.value||'').trim();if(!n){alert('Entrez un nom');return;}
   const u=A.usr.n;if(!DB.pvf)DB.pvf={};if(!DB.pvf[u])DB.pvf[u]={};
   if(DB.pvf[u][n]!==undefined){alert('Ce dossier existe déjà');return;}
-  DB.pvf[u][n]=[];sDB();cM();rPvfScreen();go('spv');
+  DB.pvf[u][n]=[];_topSet('pvf');cM();rPvfScreen();go('spv');
 }
 function cfDelPvF(f){sM('<h3>Supprimer le dossier ?</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+f+'"<br><span style="font-size:13px;opacity:.7">Les morceaux restent dans Mon espace</span></p><div class="ma"><button class="cc" onclick="cM()">annuler</button><button class="dl" onclick="doDelPvF(\''+e(f)+'\')">supprimer</button></div>');}
 function doDelPvF(f){
   const u=A.usr?.n;if(!u||!DB.pvf?.[u])return;
-  delete DB.pvf[u][f];sDB();cM();
+  delete DB.pvf[u][f];_topSet('pvf');cM();
   if(A.prvFolder===f)A.prvFolder=null;
   rPvfScreen();go('spv');
 }
@@ -1124,7 +1200,7 @@ function doMvPvF(nm,folder){
   if(!DB.pvf)DB.pvf={};if(!DB.pvf[u])DB.pvf[u]={};
   Object.keys(DB.pvf[u]).forEach(f=>{DB.pvf[u][f]=DB.pvf[u][f].filter(s=>s!==nm);});
   if(folder&&DB.pvf[u][folder]){if(!DB.pvf[u][folder].includes(nm))DB.pvf[u][folder].push(nm);}
-  sDB();cM();rRep('');
+  _topSet('pvf');cM();rRep('');
 }
 function oCTprvF(nm){
   const prvKey='__prv__'+(A.usr?.n||'');
@@ -1141,7 +1217,7 @@ function doCTpvf(nm,folder){
   const u=A.usr.n;if(!DB.pvf)DB.pvf={};if(!DB.pvf[u])DB.pvf[u]={};
   if(!DB.pvf[u][folder])DB.pvf[u][folder]=[];
   if(!DB.pvf[u][folder].includes(nm))DB.pvf[u][folder].push(nm);
-  sDB();cM();
+  _songSet(prvKey,nm,DB.s[prvKey][nm]);_topSet('pvf');cM();
   sM('<h3>✓ Copié !</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">"'+nm+'" → Mon espace / '+folder+'</p><div class="ma"><button onclick="cM()">OK</button></div>');
 }
 // ── Fin dossiers ────────────────────────────────────────────────────
@@ -1185,8 +1261,11 @@ function _cfDelConfirm(nm){
 function doDel(nm){
   if(DB.s?.[A.grp])delete DB.s[A.grp][nm];
   _pendingDeletes.push({grp:A.grp,nm});_savePD();
-  if(inPrv()){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{DB.pvf[u][f]=DB.pvf[u][f].filter(s=>s!==nm);});}
-  sDB({['s.'+A.grp+'.'+nm]:deleteField()});cM();rRep('');
+  const _prv=inPrv();
+  if(_prv){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{DB.pvf[u][f]=DB.pvf[u][f].filter(s=>s!==nm);});}
+  _songDel(A.grp,nm);
+  if(_prv)_topSet('pvf');
+  cM();rRep('');
 }
 function pubChoice(){pubTxt();}
 function pubTxt(){A.psecs=[{n:'Intro',c:''}];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau</h3><label class="fl">Nom du morceau</label><div style="display:flex;gap:8px;margin-bottom:14px"><input class="fi" id="pn" placeholder="ex: Highway to Hell" type="text" style="flex:1;margin-bottom:0"/><button onclick="document.getElementById(\'pnote-row\').style.display=\'flex\';this.style.display=\'none\'" style="flex-shrink:0;padding:0 14px;height:48px;font-size:12px;white-space:nowrap;border-radius:10px;background:#e67e22!important;border:none!important;color:#fff!important">+ note</button></div><div id="pnote-row" style="display:none;align-items:center;gap:8px;margin-bottom:14px"><span style="font-size:13px;color:#888;flex-shrink:0">Note :</span><input class="fi" id="pnote" placeholder="ex: capo 3" type="text" style="flex:1;margin-bottom:0"/></div><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pe" onclick="sPT(\'E\')">E standard</button><button class="tn off" id="pd" onclick="sPT(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pk" style="flex:1">'+ko+'</select><select class="fi" id="pm" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Instrument</label><div class="sr"><button class="tn" id="pig">Guitare</button><button class="tn off" id="pib">Basse</button></div><label class="fl" style="margin-top:14px">Sections de grille</label><div id="sf2"></div><button class="asec" onclick="aSec()">+ ajouter une section</button><label class="fl">Paroles</label><textarea class="fta" id="pl" placeholder="Couplet 1..."></textarea><label class="fl">Images (optionnel)</label><div id="ptimgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div><div class="ua" onclick="document.getElementById(\'ptimf\').click()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 4px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="ptimf" accept="image/*" style="display:none" onchange="prvImgTxt(this)"/><div class="ma"><button onclick="cancelPub()" style="background:#fff!important;border:2px solid #111!important;color:#111!important">annuler</button><button onclick="doPubTxt()" style="background:#e67e22!important;border:2px solid #111!important;color:#fff!important">publier</button></div>');
@@ -1230,7 +1309,10 @@ function doPubTxt(){capSF();const nm=(document.getElementById('pn')?.value||'').
   DB.s[A.grp][nm]=Object.assign(_existing,{tp:'text',ly:document.getElementById('pl')?.value||'',imgs:A.pimgs.slice(),k:document.getElementById('pk')?.value||'C',m:document.getElementById('pm')?.value||'Majeur',...(A.pins==='guitar'?{tg:A.ptun,t:A.ptun}:{tb:A.ptun})});
   if(A.pins==='bass'){DB.s[A.grp][nm].sb=_secs;if(!DB.s[A.grp][nm].sg)DB.s[A.grp][nm].sg=[];DB.s[A.grp][nm].nb=(document.getElementById('pnote')?.value||'').trim();}
   else{DB.s[A.grp][nm].sg=_secs;if(!DB.s[A.grp][nm].sb)DB.s[A.grp][nm].sb=[];DB.s[A.grp][nm].ng=(document.getElementById('pnote')?.value||'').trim();}
-  _applyPrvFolder(nm);_addHistory('publié',nm);sDB({['s.'+A.grp+'.'+nm]:DB.s[A.grp][nm],history:DB.history});cM();rRep('');}
+  _applyPrvFolder(nm);_addHistory('publié',nm);
+  _songSet(A.grp,nm,DB.s[A.grp][nm],{history:DB.history});
+  if(inPrv()&&A.prvFolder!==null)_topSet('pvf');
+  cM();rRep('');}
 function pubImg(){A.pimgs=[];A.ptun='E';const ko=getNotes().map(n=>'<option value="'+n+'">'+n+'</option>').join('');sM('<h3>Nouveau morceau — image</h3><label class="fl">Nom du morceau</label><div style="display:flex;gap:8px;margin-bottom:14px"><input class="fi" id="pin" placeholder="ex: Highway to Hell" type="text" style="flex:1;margin-bottom:0"/><button onclick="document.getElementById(\'pinote-row\').style.display=\'flex\';this.style.display=\'none\'" style="flex-shrink:0;padding:0 14px;height:48px;font-size:12px;white-space:nowrap;border-radius:10px;background:#e67e22!important;border:none!important;color:#fff!important">+ note</button></div><div id="pinote-row" style="display:none;align-items:center;gap:8px;margin-bottom:14px"><span style="font-size:13px;color:#888;flex-shrink:0">Note :</span><input class="fi" id="pinote" placeholder="ex: capo 3" type="text" style="flex:1;margin-bottom:0"/></div><label class="fl">Accordage</label><div class="sr"><button class="tn" id="pie" onclick="sPTI(\'E\')">E standard</button><button class="tn off" id="pid" onclick="sPTI(\'D\')">D (drop)</button></div><label class="fl">Tonalité</label><div style="display:flex;gap:8px"><select class="fi" id="pik" style="flex:1">'+ko+'</select><select class="fi" id="pim" style="flex:1"><option>Majeur</option><option>Mineur</option></select></div><label class="fl">Images de la grille</label><div id="pimglist" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div><div class="ua" onclick="document.getElementById(\'imf\').click()"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5" style="display:block;margin:0 auto 8px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>+ Ajouter une image</p></div><input type="file" id="imf" accept="image/*" style="display:none" onchange="prvImg(this)"/><label class="fl">Paroles</label><textarea class="fta" id="pil" placeholder="Couplet 1..."></textarea><div class="ma"><button onclick="pubChoice()" style="background:#fff!important;border:2px solid #111!important;color:#111!important">← retour</button><button onclick="doPubImg()" style="background:#e67e22!important;border:2px solid #111!important;color:#fff!important">publier</button></div>');}
 function sPTI(t){A.ptun=t;const pe=document.getElementById('pie'),pd=document.getElementById('pid');if(pe)pe.className='tn'+(t==='D'?' off':'');if(pd)pd.className='tn'+(t==='E'?' off':'');}
 async function prvImgTxt(inp){
@@ -1260,7 +1342,18 @@ function rPtImgs(){
 async function prvImg(inp){if(!inp.files?.[0])return;const ua=inp.previousElementSibling;if(ua?.querySelector('p'))ua.querySelector('p').textContent='Upload en cours…';try{A.pimgs.push(await uploadImg(inp.files[0]));rPimgList();if(ua?.querySelector('p'))ua.querySelector('p').textContent='+ Ajouter une image';inp.value='';}catch(e){if(ua?.querySelector('p'))ua.querySelector('p').textContent='Erreur — réessayez';alert('Erreur upload.');}}
 function rPimgList(){const list=document.getElementById('pimglist');if(!list)return;list.innerHTML='';A.pimgs.forEach((url,i)=>{const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px';const img=document.createElement('img');img.src=url;img.style.cssText='width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0';const l=document.createElement('span');l.style.cssText='flex:1;font-size:13px;color:#aaa';l.textContent='Image '+(i+1);const del=mk('button','width:32px;height:32px;border-radius:8px;background:#e74c3c!important;color:#fff!important;font-size:16px;padding:0;flex-shrink:0','✕',()=>{A.pimgs.splice(i,1);rPimgList();});row.appendChild(img);row.appendChild(l);row.appendChild(del);list.appendChild(row);});}
 function doPubImg(){const nm=(document.getElementById('pin')?.value||'').trim();if(!nm){alert('Entrez un nom');return;}if(!A.pimgs.length){alert('Importez au moins une image');return;}if(!DB.s[A.grp])DB.s[A.grp]={};DB.s[A.grp][nm]={tp:'image',sc:[],ly:document.getElementById('pil')?.value||'',imgs:A.pimgs.slice(),k:document.getElementById('pik')?.value||'C',m:document.getElementById('pim')?.value||'Majeur',t:A.ptun,ng:(document.getElementById('pinote')?.value||'').trim()};
-  _applyPrvFolder(nm);_addHistory('publié',nm);sDB({['s.'+A.grp+'.'+nm]:DB.s[A.grp][nm],history:DB.history});A.pimgs=[];cM();rRep('');}
+  _applyPrvFolder(nm);_addHistory('publié',nm);
+  _songSet(A.grp,nm,DB.s[A.grp][nm],{history:DB.history});
+  if(inPrv()&&A.prvFolder!==null)_topSet('pvf');
+  A.pimgs=[];cM();rRep('');}
+// Reconstruit A.sd (morceau affiché) depuis la version serveur — appelé quand
+// le morceau ouvert est modifié ailleurs pendant qu'on le consulte.
+function _rebuildSdFromDB(){
+  const s=DB.s?.[A.grp]?.[A.key];if(!s)return;
+  const _sg=s.sg?JSON.parse(JSON.stringify(s.sg)):s.sc?JSON.parse(JSON.stringify(s.sc)):[];
+  const _sb=s.sb?JSON.parse(JSON.stringify(s.sb)):[];
+  A.sd={type:s.tp||'text',secs_g:_sg,secs_b:_sb,secs:A.instMode==='bass'?_sb:_sg,lyr:s.ly||'',ly_a:s.ly_a?JSON.parse(JSON.stringify(s.ly_a)):null,imgs:s.imgs?JSON.parse(JSON.stringify(s.imgs)):s.img?[s.img]:[],tun:s.t||'E',tung:s.tg||s.t||'E',tunb:s.tb||s.t||'E',tkey:s.k||'',mode:s.m||'Majeur'};
+}
 function oSong(nm){A.key=nm;A.semi=0;const s=DB.s?.[A.grp]?.[nm]||{};
   const _sg=s.sg?JSON.parse(JSON.stringify(s.sg)):s.sc?JSON.parse(JSON.stringify(s.sc)):[];
   const _sb=s.sb?JSON.parse(JSON.stringify(s.sb)):[];
@@ -1484,7 +1577,7 @@ document.addEventListener('click',()=>{if(document.getElementById('sf')?.classLi
 function sTab(t){A.tab=t;A.semi=0;rSong();}
 function tr(d){A.semi+=d;document.getElementById('td').textContent=(A.semi>0?'+':'')+A.semi;document.getElementById('smkey').textContent=A.sd.tkey?tKey(A.sd.tkey,A.sd.mode,A.semi):'—';if(A.sd.type==='text'&&A.tab==='chords'){const _cs=getCurSecs();document.querySelectorAll('.sc').forEach((el,i)=>{if(_cs[i])el.innerHTML=_gridHtml(trTxt(nrm(_cs[i].c||'',A.alt),A.semi));});}}
 function zm(d){if(A.tab==='lyrics'){A.lfs=Math.min(72,Math.max(14,A.lfs+4*d));const el=document.querySelector('.lt');if(el)el.style.fontSize=A.lfs+'px';const lyaWrap=document.getElementById('lya-ss-wrap');if(lyaWrap)lyaWrap.style.fontSize=A.lfs+'px';}else{A.cfs=Math.min(72,Math.max(14,A.cfs+4*d));document.querySelectorAll('.sc').forEach(el=>el.style.fontSize=A.cfs+'px');}saveZoom();showUI();}
-function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.ly_a)A.ed.ly_a=A.sd.ly_a||null;if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];const _s=DB.s?.[A.grp]?.[A.key]||{};A.ed.ng=_s.ng||'';A.ed.nb=_s.nb||'';A._edInst=A.instMode||'guitar';A.ed.tun=(A._edInst==='bass'?A.sd.tunb:A.sd.tung)||A.sd.tun||'E';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
+function startEdit(){A.ed=JSON.parse(JSON.stringify(A.sd));A._lyrTouched=false;if(!A.ed.imgs)A.ed.imgs=A.ed.img?[A.ed.img]:[];if(!A.ed.ly_a)A.ed.ly_a=A.sd.ly_a||null;if(!A.ed.secs_g)A.ed.secs_g=A.ed.secs||[];if(!A.ed.secs_b)A.ed.secs_b=[];const _s=DB.s?.[A.grp]?.[A.key]||{};A.ed.ng=_s.ng||'';A.ed.nb=_s.nb||'';A._edInst=A.instMode||'guitar';A.ed.tun=(A._edInst==='bass'?A.sd.tunb:A.sd.tung)||A.sd.tun||'E';A.edTitle=A.key;A.edSemi=0;A.et=A.tab==='lyrics'?'lyrics':'chords';document.getElementById('eth').textContent='Modifier — '+(A.instMode==='bass'?'Basse':'Guitare');
   rES();go('se');setTimeout(attachAllGridShortcuts,50);}
 function sET(t){cEF();A.et=t;rES();setTimeout(attachAllGridShortcuts,50);}
 function cEF(){const body=document.getElementById('eb2');if(A.et==='lyrics'){const ta=body.querySelector('.ely');if(ta)A.ed.lyr=ta.value;}}
@@ -1538,7 +1631,7 @@ function rES(){
       body.appendChild(_delBtn);
     }
   }else{
-    const w=document.createElement('div');w.className='lw';const ta=document.createElement('textarea');ta.className='ely';ta.value=A.ed.lyr||'';ta.oninput=()=>A.ed.lyr=ta.value;w.appendChild(ta);body.appendChild(w);
+    const w=document.createElement('div');w.className='lw';const ta=document.createElement('textarea');ta.className='ely';ta.value=A.ed.lyr||'';ta.oninput=()=>{A.ed.lyr=ta.value;A._lyrTouched=true;};w.appendChild(ta);body.appendChild(w);
   }
   // Attacher les raccourcis et le clavier virtuel à tous les textareas
   setTimeout(attachAllGridShortcuts,50);
@@ -1550,7 +1643,7 @@ function doDelGrid(){
   A.ed[key]=[];
   // Mettre à jour Firebase
   const s=DB.s?.[A.grp]?.[A.key];
-  if(s){s[dbKey]=[];_pendingClearArrays.push({grp:A.grp,nm:A.key,key:dbKey});_savePD();sDB({['s.'+A.grp+'.'+A.key+'.'+dbKey]:[]});}
+  if(s){s[dbKey]=[];_pendingClearArrays.push({grp:A.grp,nm:A.key,key:dbKey});_savePD();_songPatch(A.grp,A.key,{[dbKey]:[]});}
   cM();
   // Si on supprime la grille courante, passer à l'autre
   if(A.instMode===(A._edInst==='guitar'?'guitar':'bass')){
@@ -1559,7 +1652,49 @@ function doDelGrid(){
   cancelEdit();
 }
 function cancelEdit(){sM('<div style="text-align:center;padding:8px 0"><p style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px">Fermer sans enregistrer ?</p><p style="font-size:14px;color:#aaa;margin-bottom:22px">Les modifications seront perdues.</p><div class="ma"><button class="cc" onclick="cM()">continuer à modifier</button><button class="dl" onclick="cM();go(\'ss\')">fermer quand même</button></div></div>');}
-function saveEdit(){cEF();const oldKey=A.key;const newTitle=(A.edTitle||A.key).trim()||A.key;if(!DB.s[A.grp])DB.s[A.grp]={};const data=Object.assign(DB.s[A.grp][A.key]||{},{tp:A.ed.type,sg:JSON.parse(JSON.stringify(A.ed.secs_g||[])),sb:JSON.parse(JSON.stringify(A.ed.secs_b||[])),ly:A.ed.lyr,ly_a:A.ed.ly_a||null,imgs:A.ed.imgs||[],...(A._edInst==='guitar'?{tg:A.ed.tun,t:A.ed.tun}:{tb:A.ed.tun}),k:A.ed.tkey,m:A.ed.mode,ng:A.ed.ng||'',nb:A.ed.nb||''});if(newTitle!==A.key){delete DB.s[A.grp][A.key];if(inPrv()){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{const i=DB.pvf[u][f].indexOf(A.key);if(i!==-1){DB.pvf[u][f].splice(i,1);DB.pvf[u][f].push(newTitle);}});}}DB.s[A.grp][newTitle]=data;A.key=newTitle;A.sd=JSON.parse(JSON.stringify(A.ed));if(A._edInst==='guitar')A.sd.tung=A.ed.tun;else A.sd.tunb=A.ed.tun;A.semi=0;rSong();_updateSongNote();rRep('');go('ss');_addHistory('modifié',newTitle);const _sp={['s.'+A.grp+'.'+newTitle]:data,history:DB.history};if(newTitle!==oldKey)_sp['s.'+A.grp+'.'+oldKey]=deleteField();sDB(_sp);}
+function saveEdit(){
+  cEF();
+  const oldKey=A.key;
+  const newTitle=(A.edTitle||A.key).trim()||A.key;
+  if(!DB.s[A.grp])DB.s[A.grp]={};
+  const rename=newTitle!==oldKey;
+  // Champs réellement gérés par cet éditeur (une seule grille : celle de A._edInst).
+  // ly_a et la grille de l'autre instrument NE sont PAS écrits → plus d'écrasement.
+  const gKey=A._edInst==='bass'?'sb':'sg';
+  const owned={
+    [gKey]:JSON.parse(JSON.stringify((A._edInst==='bass'?A.ed.secs_b:A.ed.secs_g)||[])),
+    imgs:A.ed.imgs||[],
+    k:A.ed.tkey||'',
+    m:A.ed.mode||'Majeur',
+    ng:A.ed.ng||'',
+    nb:A.ed.nb||''
+  };
+  if(A._edInst==='bass')owned.tb=A.ed.tun;else{owned.tg=A.ed.tun;owned.t=A.ed.tun;}
+  if(A.ed.type)owned.tp=A.ed.type;
+  if(A._lyrTouched)owned.ly=A.ed.lyr||''; // paroles écrites seulement si modifiées ici
+  // Application locale (base fraîche = dernière version serveur reçue)
+  const base=DB.s[A.grp][oldKey]||{};
+  const data=Object.assign(rename?{...base}:base,owned);
+  if(rename){
+    delete DB.s[A.grp][oldKey];
+    if(inPrv()){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{const i=DB.pvf[u][f].indexOf(oldKey);if(i!==-1){DB.pvf[u][f].splice(i,1);DB.pvf[u][f].push(newTitle);}});}
+  }
+  DB.s[A.grp][newTitle]=data;
+  A.key=newTitle;
+  A.sd=JSON.parse(JSON.stringify(A.ed));
+  // ly_a n'est pas géré par cet éditeur : garder la version serveur, pas le tampon
+  A.sd.ly_a=data.ly_a?JSON.parse(JSON.stringify(data.ly_a)):null;
+  if(A._edInst==='guitar')A.sd.tung=A.ed.tun;else A.sd.tunb=A.ed.tun;
+  A.semi=0;
+  rSong();_updateSongNote();rRep('');go('ss');
+  _addHistory('modifié',newTitle);
+  if(rename){
+    _songSet(A.grp,newTitle,data,{history:DB.history},oldKey);
+    if(inPrv())_topSet('pvf');
+  }else{
+    _songPatch(A.grp,newTitle,owned,{history:DB.history});
+  }
+}
 function openPrefs(){
   // Construire la modale via DOM pour éviter les problèmes de guillemets
   const div=document.createElement('div');
@@ -1629,6 +1764,26 @@ function exportDB(){
   const a=document.createElement('a');a.href=url;a.download='repertoire_'+stamp+'.json';a.click();
   URL.revokeObjectURL(url);
   _showToast('✅ Sauvegarde téléchargée');
+}
+function _restoreBackup(ts){
+  let bk=[];try{bk=JSON.parse(localStorage.getItem('scene_bk')||'[]');}catch(e){}
+  const entry=bk.find(b=>b.ts===ts);if(!entry)return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.innerHTML='<div style="background:#1a1a1a;border-radius:18px;padding:24px;max-width:340px;width:100%;color:#fff"><h3 style="margin:0 0 12px;font-size:17px">Restaurer cette sauvegarde ?</h3><p style="color:#aaa;font-size:14px;margin:0 0 20px">Les morceaux/paroles présents dans la sauvegarde du '+_fmtDate(entry.ts)+' seront réinjectés. Rien n\'est supprimé : ce qui existe déjà côté serveur est conservé.</p><div style="display:flex;gap:10px"><button id="_rb-no" style="flex:1;padding:12px;border-radius:10px;background:#333;color:#fff;border:none;font-size:14px;cursor:pointer">Annuler</button><button id="_rb-ok" style="flex:1;padding:12px;border-radius:10px;background:#e74c3c;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer">Restaurer</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#_rb-no').onclick=()=>ov.remove();
+  ov.querySelector('#_rb-ok').onclick=async()=>{
+    ov.remove();
+    try{
+      DB=JSON.parse(entry.db);
+      if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};
+      localStorage.setItem('scene_db',JSON.stringify(DB));
+      await sDB();
+      cM();_refreshScreen();
+      _showToast('✅ Répertoire restauré depuis la sauvegarde');
+    }catch(e){_showToast('❌ Échec de la restauration');}
+  };
 }
 function importDB(){
   const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
@@ -1714,6 +1869,20 @@ function openAdminPanel(){
   const btnIm=document.createElement('button');btnIm.style.cssText='flex:1;padding:13px;border-radius:12px;background:#2980b9;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer';btnIm.textContent='⬆️ Importer';btnIm.onclick=()=>importDB();
   rowSav.appendChild(btnEx);rowSav.appendChild(btnIm);div.appendChild(rowSav);
 
+  // Sauvegardes locales automatiques
+  let _bk=[];try{_bk=JSON.parse(localStorage.getItem('scene_bk')||'[]');}catch(e){}
+  const lbBk=document.createElement('label');lbBk.className='fl';lbBk.style.marginTop='16px';lbBk.textContent='Sauvegardes automatiques (cet appareil)';div.appendChild(lbBk);
+  const pBk=document.createElement('p');pBk.style.cssText='color:#999;font-size:13px;margin-bottom:10px';pBk.textContent=_bk.length?'Copies prises automatiquement avant chaque modification. Restaure tout le répertoire à cet instant.':'Aucune sauvegarde locale pour le moment.';div.appendChild(pBk);
+  const bkWrap=document.createElement('div');bkWrap.style.cssText='display:flex;flex-direction:column;gap:6px;padding-bottom:16px;border-bottom:1px solid #eee';
+  [..._bk].reverse().forEach(entry=>{
+    const b=document.createElement('button');b.style.cssText='width:100%;padding:11px 13px;border-radius:10px;background:#f2f2f2;color:#111;border:1px solid #e0e0e0;font-size:13px;font-weight:600;cursor:pointer;text-align:left';
+    let cnt=0;try{const o=JSON.parse(entry.db);cnt=Object.values(o.s||{}).reduce((a,g)=>a+Object.keys(g||{}).filter(k=>!k.startsWith('__')).length,0);}catch(e){}
+    b.textContent='↩︎ '+_fmtDate(entry.ts)+(entry.by?' · '+entry.by:'')+' — '+cnt+' morceaux';
+    b.onclick=()=>_restoreBackup(entry.ts);
+    bkWrap.appendChild(b);
+  });
+  div.appendChild(bkWrap);
+
   // Membres
   const lbMem=document.createElement('label');lbMem.className='fl';lbMem.style.marginTop='16px';lbMem.textContent='Membres';div.appendChild(lbMem);
   const btnMem=document.createElement('button');btnMem.style.cssText='width:100%;padding:13px;border-radius:12px;background:#e67e22;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:4px';btnMem.textContent='⚙ Gérer les utilisateurs';btnMem.onclick=()=>{cM();openAdmin();};div.appendChild(btnMem);
@@ -1726,9 +1895,9 @@ function openAdminPanel(){
   document.querySelector('#mr .msh').appendChild(div);
 }
 function sNR(r){A._nr=r;const re=document.getElementById('re'),rr=document.getElementById('rr');if(re)re.className='sbt'+(r!=='editor'?' off':'');if(rr)rr.className='sbt'+(r!=='reader'?' off':'');}
-function aMem(){const u=(document.getElementById('nu')?.value||'').trim(),p=(document.getElementById('np')?.value||'').trim();if(!u||!p){alert('Remplissez les deux champs');return;}DB.u[u]={h:p,r:A._nr||'editor'};sDB();cM();openAdmin();}
-function tRole(u){DB.u[u].r=DB.u[u].r==='editor'?'reader':'editor';sDB();cM();openAdmin();}
-function dMem(u){delete DB.u[u];sDB();cM();openAdmin();}
+function aMem(){const u=(document.getElementById('nu')?.value||'').trim(),p=(document.getElementById('np')?.value||'').trim();if(!u||!p){alert('Remplissez les deux champs');return;}DB.u[u]={h:p,r:A._nr||'editor'};_topSet('u');cM();openAdmin();}
+function tRole(u){DB.u[u].r=DB.u[u].r==='editor'?'reader':'editor';_topSet('u');cM();openAdmin();}
+function dMem(u){delete DB.u[u];_topSet('u');cM();openAdmin();}
 // Gestion clavier virtuel mobile pour le modal
 let _kbPosTimer=null;
 function _updateKbPos(){
@@ -1925,23 +2094,18 @@ function doAddInstGrid(){
   const tun=A.ptun||'E';
   const tkey=document.getElementById('pk2')?.value||A.sd.tkey||'C';
   const mode=document.getElementById('pm2')?.value||A.sd.mode||'Majeur';
-  // Mettre à jour Firebase avec les bonnes clés
+  // Écriture ciblée : uniquement les champs de la grille ajoutée.
+  // (Avant : setDoc(_doc,DB) réécrivait TOUT le document → risque d'effacer
+  //  tous les autres morceaux si la copie locale était incomplète.)
   const s=DB.s?.[A.grp]?.[A.key];if(!s)return;
-  s[dbKey]=secs;if(A._addInst==='guitar'){s.tg=tun;s.t=tun;}else{s.tb=tun;}s.k=tkey;s.m=mode;
-  // Attendre que Firebase soit synced avant de continuer
-  setDoc(_doc,DB).then(()=>{
-    // Mettre à jour A.sd après confirmation Firebase
-    A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
-    A.sd.tun=tun;if(A._addInst==='guitar')A.sd.tung=tun;else A.sd.tunb=tun;A.sd.tkey=tkey;A.sd.mode=mode;
-    A.instMode=A._addInst;
-    cM();rSong();rRep('');
-  }).catch(e=>{
-    console.warn('sync error',e);
-    A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
-    A.sd.tun=tun;if(A._addInst==='guitar')A.sd.tung=tun;else A.sd.tunb=tun;A.sd.tkey=tkey;A.sd.mode=mode;
-    A.instMode=A._addInst;
-    cM();rSong();rRep('');
-  });
+  const fields={[dbKey]:secs,k:tkey,m:mode};
+  if(A._addInst==='guitar'){fields.tg=tun;fields.t=tun;}else{fields.tb=tun;}
+  Object.assign(s,fields);
+  A.sd[jsKey]=JSON.parse(JSON.stringify(secs));
+  A.sd.tun=tun;if(A._addInst==='guitar')A.sd.tung=tun;else A.sd.tunb=tun;A.sd.tkey=tkey;A.sd.mode=mode;
+  A.instMode=A._addInst;
+  cM();rSong();rRep('');
+  _songPatch(A.grp,A.key,fields);
 }
 function getCurSecs(){
   if(A.instMode==='bass') return A.sd.secs_b.length>0?A.sd.secs_b:(A.sd.secs_g.length>0?A.sd.secs_g:[]);
@@ -2288,19 +2452,19 @@ function goSlList(grp){
   const c2=mk('button','flex:1;padding:14px;border-radius:12px;background:#555!important;color:#fff!important;font-size:15px','Annuler',()=>ov2.remove());
   const o2=mk('button','flex:1;padding:14px;border-radius:12px;background:#27ae60!important;color:#fff!important;font-size:15px;font-weight:700','OK',()=>{
     const nn=i2.value.trim();ov2.remove();
-    if(nn){DB.sl[grp][i].nom=nn;sDB();goSlList(grp);}
+    if(nn){DB.sl[grp][i].nom=nn;_topSet('sl');goSlList(grp);}
   });
   b2.appendChild(c2);b2.appendChild(o2);bx2.appendChild(t2);bx2.appendChild(i2);bx2.appendChild(b2);
   ov2.appendChild(bx2);document.body.appendChild(ov2);i2.focus();i2.select();
   i2.onkeydown=ev=>{if(ev.key==='Enter')o2.click();};
 })()});
-        const cp=mk('button','width:32px;height:32px;border-radius:8px;font-size:13px;padding:0;flex-shrink:0','📋',()=>{const copy=JSON.parse(JSON.stringify(sl));copy.nom=sl.nom+' (copie)';copy.id=Date.now()+'';DB.sl[grp].push(copy);sDB();goSlList(grp);});
+        const cp=mk('button','width:32px;height:32px;border-radius:8px;font-size:13px;padding:0;flex-shrink:0','📋',()=>{const copy=JSON.parse(JSON.stringify(sl));copy.nom=sl.nom+' (copie)';copy.id=Date.now()+'';DB.sl[grp].push(copy);_topSet('sl');goSlList(grp);});
         const del=mk('button','width:32px;height:32px;border-radius:8px;font-size:13px;padding:0;flex-shrink:0;background:#e74c3c!important;color:#fff!important','✕',()=>{
           sM('<h3>Supprimer ?</h3><p style="color:#aaa;font-size:15px;margin-bottom:14px">Supprimer \"'+sl.nom+'\" ?</p><div class="ma"><button class="cc" id="sl-del-no">annuler</button><button class="dl" id="sl-del-yes">oui, supprimer</button></div>');
           setTimeout(()=>{
             const yn=document.getElementById('sl-del-no'),yy=document.getElementById('sl-del-yes');
             if(yn)yn.onclick=cM;
-            if(yy)yy.onclick=()=>{DB.sl[grp].splice(i,1);sDB();cM();goSlList(grp);};
+            if(yy)yy.onclick=()=>{DB.sl[grp].splice(i,1);_topSet('sl');cM();goSlList(grp);};
           },50);
         });
         card.appendChild(ren);card.appendChild(cp);card.appendChild(del);
@@ -2328,7 +2492,7 @@ function createSl(grp){
     if(!nom)return;
     if(!DB.sl)DB.sl={};if(!DB.sl[grp])DB.sl[grp]=[];
     DB.sl[grp].push({id:Date.now()+'',nom,morceaux:[],createur:A.usr?.n||''});
-    sDB();goSlList(grp);
+    _topSet('sl');goSlList(grp);
   });
   btns.appendChild(cancel);btns.appendChild(ok);
   box.appendChild(title);box.appendChild(inp);box.appendChild(btns);
@@ -2338,7 +2502,7 @@ function createSl(grp){
 }
 
 function doDelSl(grp,i){
-  DB.sl[grp].splice(i,1);sDB();cM();goSlList(grp);
+  DB.sl[grp].splice(i,1);_topSet('sl');cM();goSlList(grp);
 }
 
 function goSlDetail(grp,idx){
@@ -2408,7 +2572,7 @@ function goSlDetail(grp,idx){
       row.appendChild(inf);
       // Bouton supprimer
       if(canEdit()){
-        const del=mk('button','width:32px;height:32px;border-radius:9px;font-size:14px;padding:0;flex-shrink:0;background:#e74c3c!important;color:#fff!important','✕',()=>{morceaux.splice(i,1);sDB();goSlDetail(grp,idx);});
+        const del=mk('button','width:32px;height:32px;border-radius:9px;font-size:14px;padding:0;flex-shrink:0;background:#e74c3c!important;color:#fff!important','✕',()=>{morceaux.splice(i,1);_topSet('sl');goSlDetail(grp,idx);});
         row.appendChild(del);
       }
       row.ondragstart=e=>{
@@ -2455,7 +2619,7 @@ function goSlDetail(grp,idx){
             morceaux.splice(finalPos,0,moved);
             dragSrc=null;
           A._slScroll=wrap.scrollTop;
-          sDB();
+          _topSet('sl');
           goSlDetail(grp,idx);
           return;
           }
@@ -2478,7 +2642,7 @@ function goSlDetail(grp,idx){
             const moved=morceaux.splice(dragSrc,1)[0];
             const finalPos=dragSrc<insertAt?insertAt-1:insertAt;
             morceaux.splice(finalPos,0,moved);
-            dragSrc=null;sDB();
+            dragSrc=null;_topSet('sl');
             document.querySelectorAll('.sl-drop-line').forEach(l=>l.remove());
             const _rows=wrap.querySelectorAll('.mi');
             morceaux.forEach((nm,i)=>{
@@ -2546,7 +2710,7 @@ function openSlPicker(grp,idx){
   const cancel=mk('button','flex:1;padding:14px;border-radius:12px','Annuler',()=>document.body.removeChild(modal));
   const ok=mk('button','flex:1;padding:14px;border-radius:12px;background:#27ae60!important;color:#fff!important;font-weight:700','Ajouter',()=>{
     selected.forEach(nm=>{if(!sl.morceaux.includes(nm))sl.morceaux.push(nm);});
-    sDB();document.body.removeChild(modal);goSlDetail(grp,idx);
+    _topSet('sl');document.body.removeChild(modal);goSlDetail(grp,idx);
   });
   btns.appendChild(cancel);btns.appendChild(ok);
   box.appendChild(inp);box.appendChild(list);box.appendChild(btns);modal.appendChild(box);document.body.appendChild(modal);
@@ -3101,7 +3265,7 @@ function lyaSave(){
   }
   A.sd.ly_a=JSON.parse(JSON.stringify(A._lyaEditing));
   const s=DB.s?.[A.grp]?.[A.key];
-  if(s){s.ly_a=A.sd.ly_a;sDB({['s.'+A.grp+'.'+A.key+'.ly_a']:s.ly_a});}
+  if(s){s.ly_a=A.sd.ly_a;_songPatch(A.grp,A.key,{ly_a:s.ly_a});}
   go('ss');rSong();
 }
 // Surcharger openLyAEditor pour aller sur l'écran slya
