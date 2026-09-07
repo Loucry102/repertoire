@@ -386,11 +386,16 @@ let DB=null;
 let _dbReady=false;
 let _pendingWrite=false; // true = modifications locales pas encore envoyées au serveur
 let _docExists=false; // true une fois confirmé que le document Firestore existe
-let _pendingDeletes=JSON.parse(localStorage.getItem('scene_pd')||'[]');
-let _pendingClearArrays=JSON.parse(localStorage.getItem('scene_pca')||'[]');
-function _savePD(){localStorage.setItem('scene_pd',JSON.stringify(_pendingDeletes));localStorage.setItem('scene_pca',JSON.stringify(_pendingClearArrays));}
-function _clearPD(){_pendingDeletes=[];_pendingClearArrays=[];localStorage.removeItem('scene_pd');localStorage.removeItem('scene_pca');}
-function _reapplyPD(){for(const{grp,nm}of _pendingDeletes){if(DB.s?.[grp]?.[nm])delete DB.s[grp][nm];}for(const{grp,nm,key}of _pendingClearArrays){if(DB.s?.[grp]?.[nm])DB.s[grp][nm][key]=[];}}
+// OBSOLÈTE : l'ancien mécanisme de « suppressions en attente » réappliquait des
+// suppressions à chaque snapshot. Avec les écritures ciblées (_songDel), la
+// suppression part immédiatement au serveur — plus besoin. On purge le stockage
+// hérité pour ne pas ré-effacer des morceaux recréés avec un nom déjà supprimé.
+try{localStorage.removeItem('scene_pd');localStorage.removeItem('scene_pca');}catch(e){}
+let _pendingDeletes=[];
+let _pendingClearArrays=[];
+function _savePD(){}
+function _clearPD(){}
+function _reapplyPD(){}
 function _updateSyncBadge(){
   const b=document.getElementById('sync-badge');
   if(b)b.style.display=_pendingWrite?'block':'none';
@@ -458,15 +463,18 @@ function loadDB(){
           localStorage.setItem('scene_db',JSON.stringify(DB));
           _dbReady=true;finish();
         }else if(snap.exists()){
+          _docExists=true;
           // Détecter les changements avant fusion
           const{added,modified}=_detectChanges(DB,snap.data());
           const hasRemoteChanges=added.length>0||modified.length>0;
+          const _prevDB=DB;
           // En ligne : serveur gagne directement (écritures ciblées → rien à réconcilier localement)
           // Hors ligne : fusion pour préserver les modifs locales non encore envoyées
           if(_pendingWrite){DB=_mergeDB(snap.data(),DB);}else{DB=snap.data();}
           if(!DB.u)DB.u={};if(!DB.s)DB.s={};if(!DB.g)DB.g=[];if(!DB.sl)DB.sl={};
-          // Réappliquer suppressions pendantes (résistent au redémarrage via localStorage)
-          _reapplyPD();
+          // Protéger les morceaux écrits localement il y a < 15 s : l'écho serveur
+          // peut arriver avant que l'écriture soit visible → ne pas les faire disparaître.
+          _applyRecentSongWrites(_prevDB);
           localStorage.setItem('scene_db',JSON.stringify(DB));
           // Afficher toast + rafraîchir si changement distant réel
           if(hasRemoteChanges){
@@ -559,8 +567,24 @@ async function _wr(op){
   localStorage.setItem('scene_db',JSON.stringify(DB));
   _updateSyncBadge();
 }
+// Morceaux écrits localement très récemment : on les garde tels quels lors des
+// snapshots pendant 15 s, le temps que l'écriture soit répercutée côté serveur.
+const _recentSongWrites={};
+function _noteSongWrite(grp,nm){_recentSongWrites[JSON.stringify([grp,nm])]=Date.now();}
+function _applyRecentSongWrites(prevDB){
+  const now=Date.now();
+  for(const key in _recentSongWrites){
+    if(now-_recentSongWrites[key]>15000){delete _recentSongWrites[key];continue;}
+    let g,n;try{[g,n]=JSON.parse(key);}catch(e){continue;}
+    const local=prevDB?.s?.[g]?.[n];
+    if(!DB.s)DB.s={};
+    if(local===undefined){ if(DB.s[g])delete DB.s[g][n]; }
+    else{ if(!DB.s[g])DB.s[g]={}; DB.s[g][n]=local; }
+  }
+}
 // Objet morceau complet (publication, copie, réception)
 function _songSet(grp,nm,obj,extra,delNm){
+  _noteSongWrite(grp,nm);if(delNm)_noteSongWrite(grp,delNm);
   return _wr(async()=>{
     const args=[_doc,new FieldPath('s',grp,nm),obj];
     if(delNm&&delNm!==nm)args.push(new FieldPath('s',grp,delNm),deleteField());
@@ -571,6 +595,7 @@ function _songSet(grp,nm,obj,extra,delNm){
 // Seulement certains champs d'un morceau : les autres champs — et tous les
 // autres morceaux — ne sont jamais touchés (fin des paroles/grilles écrasées).
 function _songPatch(grp,nm,fields,extra){
+  _noteSongWrite(grp,nm);
   return _wr(async()=>{
     const args=[_doc];
     for(const k in fields)args.push(new FieldPath('s',grp,nm,k),fields[k]);
@@ -580,6 +605,7 @@ function _songPatch(grp,nm,fields,extra){
 }
 // Suppression d'un morceau
 function _songDel(grp,nm,extra){
+  _noteSongWrite(grp,nm);
   return _wr(async()=>{
     const args=[_doc,new FieldPath('s',grp,nm),deleteField()];
     if(extra)for(const k in extra)args.push(k,extra[k]);
@@ -1260,7 +1286,6 @@ function _cfDelConfirm(nm){
 }
 function doDel(nm){
   if(DB.s?.[A.grp])delete DB.s[A.grp][nm];
-  _pendingDeletes.push({grp:A.grp,nm});_savePD();
   const _prv=inPrv();
   if(_prv){const u=A.usr?.n;if(u&&DB.pvf?.[u])Object.keys(DB.pvf[u]).forEach(f=>{DB.pvf[u][f]=DB.pvf[u][f].filter(s=>s!==nm);});}
   _songDel(A.grp,nm);
@@ -1643,7 +1668,7 @@ function doDelGrid(){
   A.ed[key]=[];
   // Mettre à jour Firebase
   const s=DB.s?.[A.grp]?.[A.key];
-  if(s){s[dbKey]=[];_pendingClearArrays.push({grp:A.grp,nm:A.key,key:dbKey});_savePD();_songPatch(A.grp,A.key,{[dbKey]:[]});}
+  if(s){s[dbKey]=[];_songPatch(A.grp,A.key,{[dbKey]:[]});}
   cM();
   // Si on supprime la grille courante, passer à l'autre
   if(A.instMode===(A._edInst==='guitar'?'guitar':'bass')){
